@@ -1,19 +1,36 @@
 ANDROID APP PROJECT CONTEXT REPORT
 
 PROJECT OVERVIEW
-- This is a brand new Android app project.
 - Project name: FirstApp
 - Current package name: com.example.firstapp
 - Current save location: /Users/jonathangallo/ANDROID_REPOS/firstapp
 - This is a Kotlin + Jetpack Compose Android app created in Android Studio.
-- The user is a complete beginner to Android development, so explanations and changes should be clear, incremental, and beginner-friendly.
-- The user wants to learn the modern standard Android stack, not legacy Android patterns unless necessary.
+- The app is no longer the default starter template in practice; it now contains a working first-pass multi-timer UI.
+- The user is a beginner to Android development, so explanations and changes should remain clear, incremental, and beginner-friendly.
+- The user wants to learn the modern Android stack:
+  - Kotlin
+  - Jetpack Compose
+  - Material 3
+  - Gradle Kotlin DSL
+- The user does NOT want legacy XML Views unless explicitly requested later.
 
 PRIMARY GOAL
-- Build a normal Android app that is intended to be used ONLY on the bottom screen of the AYN Thor.
-- This app is NOT meant to use dual-screen APIs or dual-screen functionality.
-- Treat the target as a normal single-screen Android app with a compact, unusual screen shape.
-- The app should be designed around the bottom screen dimensions and usability constraints, not around phone defaults.
+- Build a normal Android app intended to be used ONLY on the bottom screen of the AYN Thor.
+- Treat the target device as a normal single-screen Android app with a compact, unusual screen shape.
+- Do NOT introduce dual-screen APIs, foldable APIs, spanning, or second-display logic.
+- Design around the bottom-screen dimensions and usability constraints, not around tall phone defaults.
+
+CURRENT APP CONCEPT
+- The app concept is now defined at a basic level:
+  - It is a multi-timer app.
+  - The user should be able to create multiple timers quickly.
+  - The app is designed for fast touch interaction on a small screen.
+- The app currently supports:
+  - Quick preset timers
+  - Custom timer creation through a popup dialog
+  - Multiple timers displayed on the main screen in a grid
+  - Start / pause / reset / remove timer actions
+  - A placeholder blank settings popup
 
 HARDWARE TARGET / SCREEN TARGET
 - Target usage: AYN Thor bottom screen only
@@ -28,11 +45,12 @@ HARDWARE TARGET / SCREEN TARGET
 - Design assumption:
   - This is a compact, somewhat squarish screen compared to a normal phone
   - UI should prioritize readability, touch targets, and low clutter
-  - Keep layouts simple and efficient
+  - Layouts should avoid tall-phone assumptions
+  - Vertical space is limited enough that oversized headers and large stacked controls can easily break the layout
 
 CURRENT DEVELOPMENT STACK
 - IDE: Android Studio
-- AI coding helper expected: ChatGPT Codex 5.3, likely used via Cursor
+- AI coding helper expected: ChatGPT Codex 5.3 / Codex-based workflow
 - Language: Kotlin
 - UI toolkit: Jetpack Compose
 - Build configuration language: Kotlin DSL
@@ -40,31 +58,26 @@ CURRENT DEVELOPMENT STACK
 - App style: native Android app
 - Output target: APK / Android app package
 
-CURRENT ANDROID STUDIO NEW PROJECT SETTINGS
-- Template: Empty Activity
-- UI approach: Jetpack Compose
-- Project name: FirstApp
-- Package name: com.example.firstapp
-- Save location: /Users/jonathangallo/ANDROID_REPOS/firstapp
-- Minimum SDK: API 29 (Android 10.0)
-- Build configuration language: Kotlin DSL (build.gradle.kts)
+CURRENT ANDROID / BUILD CONTEXT
+- Minimum SDK: API 29 (Android 10)
+- Target SDK: 36
+- Compile SDK: 36.1
+- Build scripts use Kotlin DSL, not Groovy
+- The project builds successfully with:
+  - ./gradlew :app:assembleDebug
+- Current debug APK output path:
+  - app/build/outputs/apk/debug/app-debug.apk
 
 IMPORTANT SDK / VERSION CONTEXT
 - The app minSdk is API 29.
-- This means the app is allowed to run on Android 10 and above.
-- This does NOT mean the emulator must also be API 29.
-- Emulator Android version can be higher than minSdk.
-- For Thor-like testing, API 33 is preferred if available.
-- A higher emulator API is acceptable as long as it is >= 29.
+- The app is intended to run on Android 10 and above.
+- Emulator Android version can be newer than minSdk.
+- For Thor-like testing, API 33 is still a reasonable target if available, but newer emulator images are acceptable.
 
 CURRENT TESTING / EMULATOR CONTEXT
-- Default installed emulator currently present in Android Studio:
-  - Medium Phone API 36.1
-  - arm64
-  - Android 16.0
-- The project has already been run successfully in an emulator.
-- A custom AVD is being created specifically to approximate the Thor bottom screen.
-- Custom emulator profile being created:
+- The project has already built and run successfully in the emulator.
+- A custom AVD is intended to approximate the Thor bottom screen.
+- Custom emulator profile assumptions:
   - Device name: AYN Thor Bottom Screen
   - Device type: Phone/Tablet
   - Screen size: 3.92
@@ -74,32 +87,33 @@ CURRENT TESTING / EMULATOR CONTEXT
   - Hardware buttons: off
   - Hardware keyboard: off
   - Navigation style: None
-- Preferred emulator system image:
-  - Ideally API 33 / Android 13 if available
-  - Otherwise a newer available image is acceptable for now
+- The current UI work has been heavily shaped by screenshot-driven iteration against the compact screen shape.
 
 REAL DEVICE TESTING CONTEXT
 - The real device target is the AYN Thor.
-- The planned real-device workflow is standard Android debugging:
+- Planned real-device workflow remains standard Android debugging:
   - Enable Developer Options
   - Enable USB debugging
   - Connect the Thor by USB
   - Select the Thor as the run target in Android Studio
-- Physical device testing is planned later for final validation.
-- Day-to-day layout testing can use the custom bottom-screen emulator.
+- Real-device validation is still important later because the UI is very size-sensitive.
 
 CURRENT APP STATUS
-- This is a starter project with the default single-activity Compose setup.
-- There is no real app functionality yet.
+- This is now a functional first-pass timer app, not a blank starter project.
+- The app is still single-activity and Compose-based.
 - There is no database yet.
 - There is no backend yet.
 - There is no networking yet.
 - There is no authentication yet.
 - There are no custom permissions yet.
-- There is no navigation between multiple screens yet.
-- There is no business logic yet.
-- There is no custom state management beyond the default starter code.
-- There is no custom architecture yet beyond the default project skeleton.
+- There is no navigation library or multi-screen navigation stack yet.
+- There is no ViewModel yet.
+- There is no persistence layer yet.
+- There are no notifications yet.
+- There is no alarm manager / background service / foreground service yet.
+- There is no sound, vibration, or completion alert system yet.
+- Timers are currently in-memory only.
+- If the process is killed or the app is restarted, timers are lost.
 
 CURRENT APP STRUCTURE
 Root project contains:
@@ -113,6 +127,7 @@ Root project contains:
 - gradlew.bat
 - local.properties
 - settings.gradle.kts
+- PROJECT_CONTEXT.txt
 
 Inside app:
 - src
@@ -128,37 +143,172 @@ Kotlin source path:
 - app/src/main/java/com/example/firstapp/MainActivity.kt
 
 Theme-related files:
-- app/src/main/java/com/example/firstapp/ui/theme/...
-- These are the default theme files generated by Android Studio for a Compose app.
+- app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
+- app/src/main/java/com/example/firstapp/ui/theme/Color.kt
+- app/src/main/java/com/example/firstapp/ui/theme/Type.kt
+
+Relevant drawable/resource files now include:
+- app/src/main/res/drawable/settings.xml
+  - This is the settings gear vector drawable used by the settings button in the header.
 
 CURRENT MAINACTIVITY CONTEXT
-MainActivity.kt is currently the default Compose starter file structure:
+MainActivity.kt currently contains the full first-pass application UI and most of the app logic:
 - MainActivity extends ComponentActivity
-- onCreate calls setContent
-- App theme wrapper is FirstAppTheme
-- UI uses Scaffold(modifier = Modifier.fillMaxSize())
-- Content calls Greeting(...)
-- Greeting(name = "Android", modifier = Modifier.padding(innerPadding)) in the default starter code
-- Greeting composable shows a Text("Hello $name!")
-- GreetingPreview exists
+- onCreate calls enableEdgeToEdge()
+- onCreate calls setContent { FirstAppTheme { TimerApp() } }
+- TimerApp is the main top-level composable
+- Timer state is stored in a remembered mutableStateListOf<TimerItem>()
+- TimerItem currently contains:
+  - id
+  - totalSeconds
+  - remainingSeconds
+  - isRunning
+  - endTimeMillis
+- Timer countdown updates are driven by a LaunchedEffect loop
+- The loop recomputes remaining time for running timers based on System.currentTimeMillis()
+- Running timers stop automatically when remaining time reaches 0
+
+CURRENT FEATURE SET
+- Main dashboard screen
+- Top header with:
+  - "Multi Timer" title on the left
+  - settings icon button on the top right
+- Quick action row with:
+  - Custom button
+  - 5m preset
+  - 10m preset
+  - 15m preset
+- Preset timer behavior:
+  - Preset timers start immediately when tapped
+  - The user does NOT need to press Start after choosing a preset
+- Custom timer behavior:
+  - Custom button opens a popup dialog
+  - User sets minutes and seconds using +/- controls
+  - User presses Add Timer to create it
+  - Custom-created timers do NOT automatically start
+- Main timer display behavior:
+  - Timers are shown on the main screen in a grid
+  - The app does not rely on scrolling through a list of timers
+  - The grid is currently 2 columns by 2 rows
+  - Up to 4 timer slots are shown per page
+  - Empty slots display "Empty slot"
+- Page behavior:
+  - If more than 4 timers exist, page controls appear
+  - Previous / Next buttons switch between pages
+  - Page controls are hidden when only one page exists
+- Per-timer controls:
+  - Running timer:
+    - shows remaining time
+    - top-right remove X button
+    - Pause button
+    - Reset button next to Pause
+  - Not-running timer:
+    - shows remaining time
+    - top-right remove X button
+    - Start button or Restart button depending on state
+- Settings behavior:
+  - Header settings icon opens a popup dialog styled similarly to the custom timer dialog
+  - The settings popup is intentionally blank right now
+  - It currently only provides a Close button
 
 CURRENT UI STATE
-- The app is still basically the default starter Compose UI.
-- It is a single text-based starter screen.
-- There was emulator output shown during testing that displayed "Hello Test!!" at one point, but the last shared source code snippet still matched the default Greeting pattern with "Android" as the passed name.
-- If there is any mismatch between screenshots and source, treat the local source file as the source of truth.
+- The app no longer contains the default Greeting composable UI.
+- The main UI is custom-built for the compact target screen.
+- The layout has been iterated repeatedly to reduce cutoff and crowding issues.
+- Current major UI characteristics:
+  - dark theme
+  - red accent color
+  - compact header
+  - compact action row
+  - grid-based timer display
+  - dialog-based custom timer creation
+  - dialog-based placeholder settings screen
+- The header has been simplified to reclaim vertical space:
+  - settings icon is top-right
+  - timer count / running-count text has been removed from the main screen
+- Timer cards have been simplified:
+  - only the remaining time is shown as the main information
+  - timer names/labels are not shown in the visible card UI
+- The settings button currently uses the vector drawable resource at:
+  - app/src/main/res/drawable/settings.xml
 
-IMPORTANT PROJECT CONSTRAINTS
-- Stay on Kotlin.
-- Stay on Jetpack Compose.
-- Stay on Material 3 / modern Compose patterns unless there is a strong reason not to.
-- Do not convert this project to XML Views unless explicitly asked.
-- Do not introduce dual-screen APIs.
-- Do not assume this app needs multi-display logic.
-- Do not over-engineer early.
-- Keep the app single-purpose and simple unless new requirements are given.
-- Prefer small, explainable changes over large framework-heavy rewrites.
-- Preserve the existing project setup unless there is a clear reason to change it.
+CURRENT THEME / VISUAL DESIGN
+- The app uses a fixed dark Material 3 color scheme.
+- Dynamic color is not used.
+- Theme file:
+  - app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
+- Color file:
+  - app/src/main/java/com/example/firstapp/ui/theme/Color.kt
+- Current palette direction:
+  - dark background
+  - dark surfaces
+  - red primary accent
+  - muted gray outlines
+  - light text on dark surfaces
+- Relevant custom colors include:
+  - RedAccent
+  - RedAccentDark
+  - RedHighlight
+  - AppBackground
+  - AppSurface
+  - AppSurfaceRaised
+  - AppOutline
+  - OnDark
+  - OnDarkMuted
+
+CURRENT LAYOUT / UX DECISIONS
+- The user explicitly does not want the app to depend on scrolling as the main interaction model.
+- The main screen uses a fixed dashboard layout rather than a scrollable list of timers.
+- Menus/dialogs are used where appropriate to avoid overloading the main screen.
+- The compact screen forces tradeoffs:
+  - headers must be small
+  - action rows must be dense
+  - timer cards cannot contain too much text
+  - buttons often need reduced padding to fit
+- The timer count / running-count label was removed because it consumed horizontal and vertical space without being essential.
+- The timer card layout has already needed multiple rounds of tightening for:
+  - countdown visibility
+  - action button clipping
+  - remove-button placement
+
+CURRENT TIMER LOGIC DETAILS
+- addTimer(totalSeconds, startImmediately = false):
+  - creates a timer
+  - inserts it at the front of the list
+  - resets currentPage to 0 so newly added timers are visible immediately
+- Quick preset buttons call addTimer(..., startImmediately = true)
+- Custom timer dialog calls addTimer(..., startImmediately = false)
+- Pause logic:
+  - computes remaining time from endTimeMillis
+  - stops the timer
+  - clears endTimeMillis
+- Start / Restart logic:
+  - restarts from totalSeconds if remainingSeconds == 0
+  - otherwise resumes from current remainingSeconds
+- Reset logic:
+  - returns timer to its original totalSeconds
+  - clears running state
+- Remove logic:
+  - removes the timer from the mutable list
+
+CURRENT DIALOGS
+Custom timer dialog:
+- Uses the shared AppDialog + DialogCard structure
+- Compact stepper rows for minutes and seconds
+- Cancel button
+- Add Timer button
+- Designed specifically to avoid being cut off on the small screen
+
+Settings dialog:
+- Uses the same shared AppDialog + DialogCard structure
+- Has no actual settings controls yet
+- Exists as a placeholder shell for future settings
+- Currently contains blank space plus a Close button
+
+CURRENT RESOURCE / ICON CONTEXT
+- settings.xml in drawable is now a standard vector drawable, not an adaptive launcher icon wrapper
+- It is referenced directly from Compose using painterResource(R.drawable.settings)
+- This icon is used only for the header settings button at the moment
 
 BUILD / GRADLE CONTEXT
 - Gradle is the Android build system for this project.
@@ -169,9 +319,10 @@ BUILD / GRADLE CONTEXT
   - settings.gradle.kts defines project/module structure
   - gradle.properties contains build-wide settings
   - local.properties contains machine-local SDK path
-- Any changes to dependencies, Compose settings, namespace, sdk versions, etc. should be made in the correct Gradle Kotlin DSL files.
-- Do not convert build scripts to Groovy.
-- Keep Gradle changes minimal and explain why each change is needed.
+  - gradle/libs.versions.toml defines versions and library aliases
+- Dependency approach remains intentionally minimal.
+- No major new libraries were added for this timer UI.
+- The settings icon implementation was done with local drawable resources rather than adding extra icon-pack dependencies.
 
 BEGINNER SUPPORT CONTEXT
 - The user is new to Android development.
@@ -180,27 +331,38 @@ BEGINNER SUPPORT CONTEXT
   - file-by-file explanations
   - plain-English rationale
   - small changes first
-  - telling them exactly where files are
-  - avoiding too much Android jargon without explanation
-- When suggesting changes, explain:
+  - exact file locations
+  - minimal unexplained Android jargon
+- When suggesting changes, continue to explain:
   - what file to open
-  - what to replace
-  - why the change matters
-  - what result the user should expect
+  - what changed
+  - why it matters
+  - what the user should expect visually or behaviorally
+
+IMPORTANT PROJECT CONSTRAINTS
+- Stay on Kotlin.
+- Stay on Jetpack Compose.
+- Stay on Material 3 / modern Compose patterns unless there is a strong reason not to.
+- Do not convert this project to XML Views unless explicitly asked.
+- Do not introduce dual-screen APIs.
+- Do not assume the app needs multi-display logic.
+- Do not over-engineer early.
+- Keep the app simple and explainable.
+- Preserve the current project setup unless there is a clear reason to change it.
+- Continue optimizing for the compact Thor-like screen instead of phone-default layouts.
 
 DESIGN / UX GUIDELINES FOR THIS APP
 - Optimize for a compact screen.
-- Keep touch targets reasonably large.
-- Avoid dense, cluttered layouts.
-- Avoid wasting too much screen area on oversized top bars or decorative UI.
-- Favor simple layouts:
+- Keep touch targets reasonably large, but accept that some controls may need tighter padding than normal phone UI.
+- Avoid dense decorative UI that does not earn its space.
+- Avoid oversized headers and stacked chrome.
+- Prefer simple Compose layouts:
   - Column
   - Row
   - Box
-  - LazyColumn
-- Prefer readable text sizes and obvious spacing.
-- Use responsive Compose layouts rather than hardcoding assumptions for a normal tall phone.
-- Test visually against the custom 1240 x 1080, 3.92-inch emulator profile.
+- Favor visible primary actions on the main screen.
+- Do not hide essential timer actions behind scrolling.
+- Test visually against the custom 1240 x 1080, 3.92-inch emulator profile whenever possible.
 
 CODING PREFERENCES FOR FUTURE WORK
 - Use idiomatic Kotlin.
@@ -210,48 +372,49 @@ CODING PREFERENCES FOR FUTURE WORK
 - Add features incrementally.
 - Avoid unnecessary libraries.
 - Avoid architectural complexity too early.
-- If adding state, start simple with remember / mutableStateOf where appropriate, then introduce ViewModel only when useful.
-- If adding navigation later, use Navigation Compose.
-- If adding persistence later, choose a simple, modern Android-friendly approach.
+- If state becomes more complex later, ViewModel can be introduced, but it is not currently required.
+- If persistence is added later, choose a simple modern Android-friendly approach.
 - Keep names clean and beginner-readable.
 
-FILES MOST LIKELY TO MATTER EARLY
+FILES MOST LIKELY TO MATTER NOW
 - app/src/main/java/com/example/firstapp/MainActivity.kt
-- app/src/main/java/com/example/firstapp/ui/theme/*
+- app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
+- app/src/main/java/com/example/firstapp/ui/theme/Color.kt
+- app/src/main/res/drawable/settings.xml
 - app/src/main/AndroidManifest.xml
 - app/build.gradle.kts
-- app/src/main/res/*
+- gradle/libs.versions.toml
 
 SAFE DEFAULT ASSUMPTIONS FOR CODEX
 - The user wants a modern native Android app, not a cross-platform framework.
 - The user wants Kotlin + Jetpack Compose only.
-- The user is learning, so generated code should be understandable.
+- The user wants the app to remain beginner-readable.
 - The app should work as a normal single-screen Android app.
 - The target layout should fit the Thor bottom-screen emulator profile.
 - The app should remain compatible with the current project setup unless explicitly changed.
 - Prefer API-safe code compatible with minSdk 29.
 - Do not assume the app should be Thor-exclusive at the code level unless requested.
-- Do not assume landscape-only or portrait-only unless the user explicitly decides that later.
-- Do not assume the app needs permissions, network access, storage, or sensors unless requested.
+- Do not assume background timer reliability, notifications, or persistence exist yet.
+- If screenshots disagree with older written notes, treat the current local source code as the source of truth.
 
 CURRENT KNOWN OPEN QUESTIONS
-- The actual app concept/functionality beyond the starter project has not been finalized in this context.
-- Final desired orientation behavior has not been explicitly locked down.
-- Final navigation structure is unknown.
-- Final data model is unknown.
-- Final app branding/name may change later.
-- Real-device testing on the physical Thor is planned but not yet the main workflow.
-- The custom emulator is being used to approximate the bottom screen, not to emulate full Thor hardware behavior.
+- Should timers persist across app restarts?
+- Should finished timers trigger sound, vibration, or notifications?
+- Should the settings popup eventually control theme, sound, or timer defaults?
+- Should there be a maximum number of simultaneous timers?
+- Should page controls remain the long-term approach, or should the grid/dashboard design change again?
+- Final orientation behavior is still not explicitly locked down.
+- Real-device testing on the actual Thor remains important for final layout validation.
 
 WHAT CODEX SHOULD AVOID
-- Do not introduce XML layouts.
+- Do not introduce XML layout screens.
 - Do not replace Compose with Views.
 - Do not create dual-screen features.
-- Do not assume a phone-standard tall layout is acceptable without checking compact-screen usability.
-- Do not make major Gradle changes without explaining them.
+- Do not assume a normal tall-phone layout is acceptable without compact-screen verification.
+- Do not make major Gradle or dependency changes without explaining them.
 - Do not rename package/project/files unless asked.
-- Do not add lots of dependencies unless clearly needed.
+- Do not add persistence, alarms, services, or notifications silently without discussing the tradeoff.
 - Do not jump straight into advanced architecture unless the project grows enough to justify it.
 
 SHORT SUMMARY
-This is a fresh Android Studio Kotlin + Jetpack Compose project named FirstApp with package com.example.firstapp and minSdk 29. It is intended to be a normal Android app used only on the bottom screen of the AYN Thor, with no dual-screen behavior at all. Development should stay modern, native, and beginner-friendly. The key special requirement is that UI should be designed and tested against a compact 3.92-inch 1240 x 1080 screen profile. A custom emulator profile is being created for that screen, while real-device Thor testing will happen later via USB debugging.
+This project is now a working first-pass Kotlin + Jetpack Compose multi-timer app designed for the compact bottom screen of the AYN Thor. It uses a dark theme with red accents, a fixed no-scroll dashboard, quick preset timers that auto-start, a custom timer popup, and a placeholder settings popup opened from a top-right gear icon. Timers are shown in a paged 2x2 grid on the main screen, with direct start/pause/reset/remove controls. The app is still intentionally simple and beginner-friendly: no persistence, no notifications, no backend, and no advanced architecture yet. Development should continue to prioritize compact-screen usability and small, explainable changes.
