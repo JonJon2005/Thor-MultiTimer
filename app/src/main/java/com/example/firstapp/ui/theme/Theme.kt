@@ -19,6 +19,14 @@ enum class AppAccentColor {
     PURPLE
 }
 
+enum class ControllerHighlightColor {
+    DEFAULT,
+    RED,
+    BLUE,
+    GREEN,
+    PURPLE
+}
+
 private data class AccentPalette(
     val primary: Color,
     val secondary: Color,
