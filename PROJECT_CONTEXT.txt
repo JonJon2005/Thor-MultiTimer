@@ -63,7 +63,8 @@ CURRENT DEVELOPMENT STACK
   - single-activity
   - Compose state in MainActivity.kt
   - no ViewModel yet
-  - no persistence layer yet
+  - DataStore-backed settings persistence
+  - timers still in-memory only
   - no backend
   - no networking
   - no database
@@ -102,6 +103,8 @@ CURRENT APP STATUS
   - multi-timer dashboard
   - theme switching
   - accent switching
+  - controller highlight color switching
+  - persisted app settings
   - vibration feedback
   - finish alert popup
   - system alarm / notification sound fallback
@@ -133,6 +136,7 @@ App module contains:
 
 Important source files:
 - app/src/main/java/com/example/firstapp/MainActivity.kt
+- app/src/main/java/com/example/firstapp/AppSettingsStore.kt
 - app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
 - app/src/main/java/com/example/firstapp/ui/theme/Color.kt
 - app/src/main/java/com/example/firstapp/ui/theme/Type.kt
@@ -152,6 +156,7 @@ CURRENT MAINACTIVITY CONTEXT
   - manages dialog visibility
   - manages theme selection
   - manages accent selection
+  - manages persisted controller highlight selection
   - manages active finish alerts
 
 CURRENT CORE DATA MODEL
@@ -168,8 +173,8 @@ CURRENT CORE DATA MODEL
 CURRENT TIMER LOGIC
 - addTimer(totalSeconds, startImmediately = false):
   - validates totalSeconds > 0
-  - inserts the new timer at the front of the list
-  - resets currentPage to 0 so the new timer is visible immediately
+  - appends the new timer so existing card order stays stable
+  - sends currentPage to the page that contains the new timer
   - optionally starts immediately by setting endTimeMillis
 - updateTimer(timerId, transform):
   - finds the timer by id
@@ -216,13 +221,16 @@ CURRENT MAIN SCREEN / DASHBOARD
 - Quick preset behavior:
   - creates timer
   - starts timer immediately
+  - controller focus stays on the preset button that created the timer
 - Custom behavior:
   - opens custom timer dialog
   - created timers do not auto-start
+  - controller focus stays on Custom after returning to the dashboard
 - Page behavior:
   - 4 timers max visible per page
   - page controls appear only if timers exceed 4
   - Previous / Next switch pages
+  - newly added timers appear in the next available card slot rather than displacing earlier timers
 
 CURRENT TIMER CARD DESIGN
 - Timer cards are shown in a 2x2 grid.
@@ -233,25 +241,28 @@ CURRENT TIMER CARD DESIGN
   - Pause + Reset while running
   - Start or Restart while not running
 - Empty slots show:
-  - Empty slot
-  - Ready for timer
+  - background only
+  - outline only
+  - no explanatory text
 - Controller focus state is visually reflected on timer cards.
 - Empty cards are intentionally styled to remain visible even in OLED mode.
 
 CURRENT DIALOGS
 Custom timer dialog:
 - Opens from Custom button
-- Uses compact stepper controls
-- Minute controls:
-  - decrement by 1
-  - increment by 1
-- Second controls:
-  - decrement by 15
-  - increment by 15
-  - effectively cycles in usable 15-second increments within the allowed range
+- Uses a compact keypad entry layout instead of steppers
+- Time entry behavior:
+  - input is shown as MM:SS
+  - up to 4 digits are accepted
+  - default open state is 00:00
+  - Add Timer is disabled for 00:00
 - Actions:
   - Cancel
   - Add Timer
+- Includes a small top-right Y Close controller hint
+- Controller dismissal behavior:
+  - Y closes the panel
+  - B does not close the panel
 - Designed to fit on the compact target screen without cutoff
 
 Settings dialog:
@@ -260,7 +271,12 @@ Settings dialog:
 - Sections:
   - Theme
   - Accent
+  - Highlight
   - Close button
+- Includes a small top-right Y Close controller hint
+- Controller dismissal behavior:
+  - Y closes the panel
+  - B does not close the panel
 
 Finished timer dialog:
 - Appears when a timer reaches zero
@@ -287,8 +303,8 @@ CURRENT THEME SYSTEM
   - pure black background emphasis
   - red/blue/green/purple accent still visible
 - Theme changes are applied live in-app.
-- Theme choice is currently in-memory / saveable state only.
-- Theme choice is not yet persisted across full process death / reinstall.
+- Theme choice is persisted with DataStore.
+- Theme choice survives full app close / reopen.
 
 CURRENT ACCENT COLOR SYSTEM
 - The app supports four accent colors:
@@ -302,7 +318,22 @@ CURRENT ACCENT COLOR SYSTEM
 - Accent selector uses color swatch buttons instead of text labels.
 - Selected accent is visually highlighted.
 - Accent changes apply live throughout the app.
-- Accent choice is not yet persisted beyond current saved UI state scope.
+- Accent choice is persisted with DataStore.
+
+CURRENT CONTROLLER HIGHLIGHT COLOR SYSTEM
+- The controller hover / focus ring has its own independent color setting.
+- Supported highlight color choices:
+  - Default
+  - Red
+  - Blue
+  - Green
+  - Purple
+- Default behavior:
+  - uses the current neutral white / black style rather than the app accent color
+- Highlight color changes affect only the controller focus ring.
+- Highlight color does not change theme colors, accent colors, or normal button styling.
+- Highlight choices are available in the settings dialog.
+- Highlight choice is persisted with DataStore.
 
 CURRENT VISUAL / UX STYLE
 - The app has been repeatedly tuned for the compact Thor bottom screen.
@@ -330,8 +361,11 @@ CURRENT HAPTIC / FEEDBACK BEHAVIOR
 - Touch haptics:
   - main shared app buttons vibrate on tap
   - accent swatch buttons vibrate on tap
+  - highlight swatch buttons vibrate on tap
 - Controller haptics:
   - controller A-button confirmation now triggers haptic feedback too
+  - controller focus movement uses a lighter haptic pulse
+  - controller Y-close on dialogs triggers a dismiss haptic pulse
 - Button visuals:
   - buttons use a press-scale animation for tap feedback
 
@@ -363,14 +397,26 @@ CURRENT CONTROLLER SUPPORT
     - reset timer
   - Y / tertiary on focused timer card:
     - remove timer
+  - controller hint bar appears at the bottom only while controller input is active
+  - controller mode times out after 10 seconds of inactivity
+  - when controller mode times out:
+    - the hint bar disappears
+    - the visible controller focus ring disappears
+    - the timer grid smoothly expands back into the freed space
 - Dialog controller behavior:
   - D-pad moves between logical controls
   - A confirms the focused control
-  - B dismisses the dialog
+  - Y closes settings and custom timer panels
+  - B does not close settings and custom timer panels
+  - settings and custom timer dialogs show a top-right Y Close indicator
 - Finish alert controller behavior:
   - A stops alert
   - B also stops alert
-- Controller focus state is visually highlighted so the user can see what is selected.
+- Controller focus state uses a single animated ring that:
+  - moves smoothly between focus targets
+  - resizes to different button sizes
+  - adapts to different rounded shapes
+  - uses the selected highlight color
 
 IMPORTANT INTERACTION CONSTRAINTS
 - The user explicitly does not want behavior tied to Android hardware back/home navigation as the app’s normal flow.
@@ -398,9 +444,16 @@ CURRENT FILE RESPONSIBILITIES
   - dialogs
   - controller input handling
   - haptic handling for shared buttons
+- AppSettingsStore.kt:
+  - DataStore setup
+  - persisted theme setting
+  - persisted accent setting
+  - persisted controller highlight setting
 - Theme.kt:
   - app theme composition
   - theme-mode selection handling at the theme layer
+  - accent enum
+  - controller highlight enum
 - Color.kt:
   - custom color definitions
   - theme palettes
@@ -411,8 +464,7 @@ CURRENT FILE RESPONSIBILITIES
 CURRENT LIMITATIONS / KNOWN GAPS
 - Timers are still in-memory only.
 - If the app process dies, timers are lost.
-- Theme and accent choices are not yet persisted into a durable settings store.
-- There is no DataStore or SharedPreferences integration yet.
+- Settings are persisted, but timers are not.
 - Timers do not survive reboot or background process loss.
 - There is no foreground service or background alarm scheduling.
 - There are no Android notifications for finished timers.
@@ -432,7 +484,7 @@ SAFE ASSUMPTIONS FOR FUTURE WORK
   - no cutoff on 1080 x 1240 Thor bottom-screen layout
 
 HIGH-VALUE NEXT STEPS IF EXPANDED LATER
-- Persist timers and app settings using DataStore
+- Persist timers using DataStore or another durable store
 - Add proper app icon assets
 - Add notification support for completed timers
 - Add optional custom sound asset support
