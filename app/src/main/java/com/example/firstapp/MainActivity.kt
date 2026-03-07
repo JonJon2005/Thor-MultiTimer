@@ -1,13 +1,19 @@
 package com.example.firstapp
 
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,8 +24,16 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonElevation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -40,15 +54,28 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.firstapp.ui.theme.AppAccentColor
+import com.example.firstapp.ui.theme.BlueAccent
+import com.example.firstapp.ui.theme.AppThemeMode
 import com.example.firstapp.ui.theme.FirstAppTheme
+import com.example.firstapp.ui.theme.GreenAccent
+import com.example.firstapp.ui.theme.PurpleAccent
+import com.example.firstapp.ui.theme.RedAccent
 import kotlinx.coroutines.delay
 
 private const val TimersPerPage = 4
@@ -58,9 +85,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FirstAppTheme {
-                TimerApp()
-            }
+            TimerApp()
         }
     }
 }
@@ -75,148 +100,194 @@ private data class TimerItem(
 
 @Composable
 fun TimerApp() {
+    val context = LocalContext.current
     val timers = remember { mutableStateListOf<TimerItem>() }
+    val finishedTimerIds = remember { mutableStateListOf<Int>() }
     var nextTimerId by rememberSaveable { mutableIntStateOf(1) }
     var currentPage by rememberSaveable { mutableIntStateOf(0) }
     var isBuilderOpen by rememberSaveable { mutableStateOf(false) }
     var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
+    var themeModeName by rememberSaveable { mutableStateOf(AppThemeMode.DARK.name) }
+    var accentColorName by rememberSaveable { mutableStateOf(AppAccentColor.RED.name) }
+    var activeAlertRingtone by remember { mutableStateOf<Ringtone?>(null) }
+    val themeMode = AppThemeMode.valueOf(themeModeName)
+    val accentColor = AppAccentColor.valueOf(accentColorName)
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            val now = System.currentTimeMillis()
+    FirstAppTheme(themeMode = themeMode, accentColor = accentColor) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                val now = System.currentTimeMillis()
 
-            for (index in timers.indices) {
-                val timer = timers[index]
-                if (!timer.isRunning || timer.endTimeMillis == null) continue
+                for (index in timers.indices) {
+                    val timer = timers[index]
+                    if (!timer.isRunning || timer.endTimeMillis == null) continue
 
-                val updatedRemaining = ((timer.endTimeMillis - now + 999L) / 1000L)
-                    .toInt()
-                    .coerceAtLeast(0)
+                    val updatedRemaining = ((timer.endTimeMillis - now + 999L) / 1000L)
+                        .toInt()
+                        .coerceAtLeast(0)
 
-                if (updatedRemaining != timer.remainingSeconds || updatedRemaining == 0) {
-                    timers[index] = timer.copy(
-                        remainingSeconds = updatedRemaining,
-                        isRunning = updatedRemaining > 0,
-                        endTimeMillis = if (updatedRemaining > 0) timer.endTimeMillis else null
-                    )
+                    if (updatedRemaining != timer.remainingSeconds || updatedRemaining == 0) {
+                        if (timer.remainingSeconds > 0 && updatedRemaining == 0 && !finishedTimerIds.contains(timer.id)) {
+                            finishedTimerIds.add(timer.id)
+                        }
+                        timers[index] = timer.copy(
+                            remainingSeconds = updatedRemaining,
+                            isRunning = updatedRemaining > 0,
+                            endTimeMillis = if (updatedRemaining > 0) timer.endTimeMillis else null
+                        )
+                    }
                 }
+
+                delay(if (timers.any { it.isRunning }) 250 else 600)
+            }
+        }
+
+        fun addTimer(totalSeconds: Int, startImmediately: Boolean = false) {
+            if (totalSeconds <= 0) return
+
+            val endTimeMillis = if (startImmediately) {
+                System.currentTimeMillis() + totalSeconds * 1000L
+            } else {
+                null
             }
 
-            delay(if (timers.any { it.isRunning }) 250 else 600)
-        }
-    }
-
-    fun addTimer(totalSeconds: Int, startImmediately: Boolean = false) {
-        if (totalSeconds <= 0) return
-
-        val endTimeMillis = if (startImmediately) {
-            System.currentTimeMillis() + totalSeconds * 1000L
-        } else {
-            null
-        }
-
-        timers.add(
-            0,
-            TimerItem(
-                id = nextTimerId,
-                totalSeconds = totalSeconds,
-                remainingSeconds = totalSeconds,
-                isRunning = startImmediately,
-                endTimeMillis = endTimeMillis
+            timers.add(
+                0,
+                TimerItem(
+                    id = nextTimerId,
+                    totalSeconds = totalSeconds,
+                    remainingSeconds = totalSeconds,
+                    isRunning = startImmediately,
+                    endTimeMillis = endTimeMillis
+                )
             )
-        )
-        nextTimerId += 1
-        currentPage = 0
-    }
-
-    fun updateTimer(timerId: Int, transform: (TimerItem) -> TimerItem) {
-        val index = timers.indexOfFirst { it.id == timerId }
-        if (index >= 0) {
-            timers[index] = transform(timers[index])
+            nextTimerId += 1
+            currentPage = 0
         }
-    }
 
-    val pageCount = ((timers.size + TimersPerPage - 1) / TimersPerPage).coerceAtLeast(1)
-    val visibleTimers = timers.drop(currentPage * TimersPerPage).take(TimersPerPage)
+        fun updateTimer(timerId: Int, transform: (TimerItem) -> TimerItem) {
+            val index = timers.indexOfFirst { it.id == timerId }
+            if (index >= 0) {
+                timers[index] = transform(timers[index])
+            }
+        }
 
-    LaunchedEffect(timers.size, pageCount) {
-        currentPage = currentPage.coerceAtMost(pageCount - 1)
-    }
+        val pageCount = ((timers.size + TimersPerPage - 1) / TimersPerPage).coerceAtLeast(1)
+        val visibleTimers = timers.drop(currentPage * TimersPerPage).take(TimersPerPage)
+        val activeFinishedTimerId = finishedTimerIds.firstOrNull()
 
-    Scaffold { innerPadding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            DashboardScreen(
-                currentPage = currentPage,
-                pageCount = pageCount,
-                visibleTimers = visibleTimers,
-                onOpenSettings = { isSettingsOpen = true },
-                onOpenBuilder = { isBuilderOpen = true },
-                onQuickAdd = { seconds -> addTimer(seconds, startImmediately = true) },
-                onStartPause = { timerId ->
-                    updateTimer(timerId) { current ->
-                        if (current.isRunning) {
-                            val remaining = current.endTimeMillis
-                                ?.let { endTime ->
-                                    ((endTime - System.currentTimeMillis() + 999L) / 1000L)
-                                        .toInt()
-                                        .coerceAtLeast(0)
+        LaunchedEffect(timers.size, pageCount) {
+            currentPage = currentPage.coerceAtMost(pageCount - 1)
+        }
+
+        LaunchedEffect(activeFinishedTimerId) {
+            activeAlertRingtone?.stop()
+            activeAlertRingtone = null
+
+            if (activeFinishedTimerId != null) {
+                val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                activeAlertRingtone = ringtoneUri
+                    ?.let { RingtoneManager.getRingtone(context, it) }
+                    ?.also { it.play() }
+            }
+        }
+
+        Scaffold { innerPadding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                DashboardScreen(
+                    currentPage = currentPage,
+                    pageCount = pageCount,
+                    visibleTimers = visibleTimers,
+                    onOpenSettings = { isSettingsOpen = true },
+                    onOpenBuilder = { isBuilderOpen = true },
+                    onQuickAdd = { seconds -> addTimer(seconds, startImmediately = true) },
+                    onStartPause = { timerId ->
+                        updateTimer(timerId) { current ->
+                            if (current.isRunning) {
+                                val remaining = current.endTimeMillis
+                                    ?.let { endTime ->
+                                        ((endTime - System.currentTimeMillis() + 999L) / 1000L)
+                                            .toInt()
+                                            .coerceAtLeast(0)
+                                    }
+                                    ?: current.remainingSeconds
+
+                                current.copy(
+                                    remainingSeconds = remaining,
+                                    isRunning = false,
+                                    endTimeMillis = null
+                                )
+                            } else {
+                                val secondsToRun = if (current.remainingSeconds == 0) {
+                                    current.totalSeconds
+                                } else {
+                                    current.remainingSeconds
                                 }
-                                ?: current.remainingSeconds
 
+                                current.copy(
+                                    remainingSeconds = secondsToRun,
+                                    isRunning = true,
+                                    endTimeMillis = System.currentTimeMillis() + secondsToRun * 1000L
+                                )
+                            }
+                        }
+                    },
+                    onReset = { timerId ->
+                        updateTimer(timerId) { current ->
                             current.copy(
-                                remainingSeconds = remaining,
+                                remainingSeconds = current.totalSeconds,
                                 isRunning = false,
                                 endTimeMillis = null
                             )
-                        } else {
-                            val secondsToRun = if (current.remainingSeconds == 0) {
-                                current.totalSeconds
-                            } else {
-                                current.remainingSeconds
-                            }
-
-                            current.copy(
-                                remainingSeconds = secondsToRun,
-                                isRunning = true,
-                                endTimeMillis = System.currentTimeMillis() + secondsToRun * 1000L
-                            )
                         }
-                    }
-                },
-                onReset = { timerId ->
-                    updateTimer(timerId) { current ->
-                        current.copy(
-                            remainingSeconds = current.totalSeconds,
-                            isRunning = false,
-                            endTimeMillis = null
-                        )
-                    }
-                },
-                onRemove = { timerId ->
-                    timers.removeAll { it.id == timerId }
-                },
-                onPreviousPage = { currentPage = (currentPage - 1).coerceAtLeast(0) },
-                onNextPage = { currentPage = (currentPage + 1).coerceAtMost(pageCount - 1) }
+                    },
+                    onRemove = { timerId ->
+                        timers.removeAll { it.id == timerId }
+                    },
+                    onPreviousPage = { currentPage = (currentPage - 1).coerceAtLeast(0) },
+                    onNextPage = { currentPage = (currentPage + 1).coerceAtMost(pageCount - 1) }
+                )
+            }
+        }
+
+        if (isBuilderOpen) {
+            TimerBuilderDialog(
+                onDismiss = { isBuilderOpen = false },
+                onAddTimer = { totalSeconds ->
+                    addTimer(totalSeconds)
+                    isBuilderOpen = false
+                }
             )
         }
-    }
 
-    if (isBuilderOpen) {
-        TimerBuilderDialog(
-            onDismiss = { isBuilderOpen = false },
-            onAddTimer = { totalSeconds ->
-                addTimer(totalSeconds)
-                isBuilderOpen = false
-            }
-        )
-    }
+        if (isSettingsOpen) {
+            SettingsDialog(
+                selectedThemeMode = themeMode,
+                selectedAccentColor = accentColor,
+                onThemeSelected = { selectedMode ->
+                    themeModeName = selectedMode.name
+                },
+                onAccentSelected = { selectedAccent ->
+                    accentColorName = selectedAccent.name
+                },
+                onDismiss = { isSettingsOpen = false }
+            )
+        }
 
-    if (isSettingsOpen) {
-        SettingsDialog(onDismiss = { isSettingsOpen = false })
+        if (activeFinishedTimerId != null) {
+            FinishedTimerDialog(
+                onStopAlert = {
+                    activeAlertRingtone?.stop()
+                    activeAlertRingtone = null
+                    finishedTimerIds.remove(activeFinishedTimerId)
+                }
+            )
+        }
     }
 }
 
@@ -281,12 +352,12 @@ private fun HeaderSection(onOpenSettings: () -> Unit) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        OutlinedButton(
+        AnimatedOutlinedButton(
             onClick = onOpenSettings,
             modifier = Modifier
-                .width(42.dp)
-                .height(38.dp),
-            shape = RoundedCornerShape(14.dp),
+                .width(50.dp)
+                .height(46.dp),
+            shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(0.dp)
         ) {
             Icon(
@@ -304,14 +375,14 @@ private fun ActionSection(
     onQuickAdd: (Int) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
+        AnimatedButton(
             onClick = onOpenBuilder,
             modifier = Modifier
                 .weight(1.3f)
-                .heightIn(min = 46.dp),
-            shape = RoundedCornerShape(18.dp)
+                .heightIn(min = 56.dp),
+            shape = RoundedCornerShape(22.dp)
         ) {
-            Text(text = "Custom", style = MaterialTheme.typography.titleSmall)
+            Text(text = "Custom", style = MaterialTheme.typography.titleMedium)
         }
 
         QuickAddButton(
@@ -338,12 +409,12 @@ private fun QuickAddButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
+    AnimatedOutlinedButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 46.dp),
-        shape = RoundedCornerShape(18.dp)
+        modifier = modifier.heightIn(min = 56.dp),
+        shape = RoundedCornerShape(22.dp)
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelLarge)
+        Text(text = label, style = MaterialTheme.typography.titleSmall)
     }
 }
 
@@ -397,108 +468,148 @@ private fun TimerSlot(
     onReset: (Int) -> Unit,
     onRemove: (Int) -> Unit
 ) {
-    val slotColor = if (timer == null) {
-        MaterialTheme.colorScheme.surface
+    val isEmptySlot = timer == null
+    val slotColor = if (isEmptySlot) {
+        MaterialTheme.colorScheme.surfaceVariant
     } else {
         MaterialTheme.colorScheme.surfaceVariant
+    }
+    val slotBorder = if (isEmptySlot) {
+        BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.9f))
+    } else {
+        null
     }
 
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = slotColor)
+        colors = CardDefaults.cardColors(containerColor = slotColor),
+        border = slotBorder
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(6.dp),
+                .padding(10.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (timer == null) {
-                Text(
-                    text = "Empty slot",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            } else {
+            if (isEmptySlot) {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = Modifier.width(26.dp))
-                        Text(
-                            text = formatClock(timer.remainingSeconds),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1
+                    Text(
+                        text = "Empty slot",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Ready for timer",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.outline,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                var showTimerContent by remember(timer.id) { mutableStateOf(false) }
+
+                LaunchedEffect(timer.id) {
+                    showTimerContent = true
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showTimerContent,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 220)) +
+                        scaleIn(
+                            initialScale = 0.84f,
+                            animationSpec = tween(durationMillis = 220)
                         )
-                        Button(
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AnimatedButton(
                             onClick = { onRemove(timer.id) },
                             modifier = Modifier
-                                .width(26.dp)
-                                .height(26.dp),
+                                .align(Alignment.TopEnd)
+                                .width(38.dp)
+                                .height(38.dp),
                             contentPadding = PaddingValues(0.dp),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.18f),
                                 contentColor = MaterialTheme.colorScheme.error
                             ),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                         ) {
-                            Text("X", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            Text("X", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
-                    }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(end = 50.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = formatClock(timer.remainingSeconds),
+                                    style = TextStyle(
+                                        fontSize = 64.sp,
+                                        lineHeight = 64.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    textAlign = TextAlign.Start,
+                                    maxLines = 1
+                                )
+                            }
 
-                    if (timer.isRunning) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Button(
-                                onClick = { onStartPause(timer.id) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .heightIn(min = 30.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                            ) {
-                                Text("Pause", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            if (timer.isRunning) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    AnimatedButton(
+                                        onClick = { onStartPause(timer.id) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = 46.dp),
+                                        shape = RoundedCornerShape(18.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Pause", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                    }
+                                    AnimatedOutlinedButton(
+                                        onClick = { onReset(timer.id) },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = 46.dp),
+                                        shape = RoundedCornerShape(18.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Reset", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                    }
+                                }
+                            } else {
+                                AnimatedButton(
+                                    onClick = { onStartPause(timer.id) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 46.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                ) {
+                                    Text(
+                                        text = if (timer.remainingSeconds == 0) "Restart" else "Start",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        maxLines = 1
+                                    )
+                                }
                             }
-                            OutlinedButton(
-                                onClick = { onReset(timer.id) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .heightIn(min = 30.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                            ) {
-                                Text("Reset", style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                            }
-                        }
-                    } else {
-                        Button(
-                            onClick = { onStartPause(timer.id) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 30.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                        ) {
-                            Text(
-                                text = if (timer.remainingSeconds == 0) "Restart" else "Start",
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1
-                            )
                         }
                     }
                 }
@@ -521,7 +632,7 @@ private fun PageControls(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        OutlinedButton(
+        AnimatedOutlinedButton(
             onClick = onPreviousPage,
             enabled = canGoBack,
             modifier = Modifier
@@ -543,7 +654,7 @@ private fun PageControls(
             )
         }
 
-        OutlinedButton(
+        AnimatedOutlinedButton(
             onClick = onNextPage,
             enabled = canGoForward,
             modifier = Modifier
@@ -590,7 +701,7 @@ private fun TimerBuilderDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TextButton(
+                AnimatedTextButton(
                     onClick = onDismiss,
                     modifier = Modifier
                         .weight(1f)
@@ -600,7 +711,7 @@ private fun TimerBuilderDialog(
                     Text("Cancel")
                 }
 
-                Button(
+                AnimatedButton(
                     onClick = { onAddTimer(minutes * 60 + seconds) },
                     enabled = minutes > 0 || seconds > 0,
                     modifier = Modifier
@@ -616,19 +727,210 @@ private fun TimerBuilderDialog(
 }
 
 @Composable
-private fun SettingsDialog(onDismiss: () -> Unit) {
+private fun SettingsDialog(
+    selectedThemeMode: AppThemeMode,
+    selectedAccentColor: AppAccentColor,
+    onThemeSelected: (AppThemeMode) -> Unit,
+    onAccentSelected: (AppAccentColor) -> Unit,
+    onDismiss: () -> Unit
+) {
     AppDialog(onDismiss = onDismiss) {
         DialogCard(title = "Settings", subtitle = "") {
-            Spacer(modifier = Modifier.height(120.dp))
-            Button(
+            Text(
+                text = "Theme",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ThemeModeToggle(
+                selectedThemeMode = selectedThemeMode,
+                onThemeSelected = onThemeSelected
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Accent",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AccentColorToggle(
+                selectedAccentColor = selectedAccentColor,
+                onAccentSelected = onAccentSelected
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AnimatedButton(
                 onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 42.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text("Close")
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinishedTimerDialog(
+    onStopAlert: () -> Unit
+) {
+    AppDialog(onDismiss = onStopAlert) {
+        DialogCard(
+            title = "Timer Finished",
+            subtitle = "A timer has completed. Stop the alert when you are ready."
+        ) {
+            AnimatedButton(
+                onClick = onStopAlert,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                Text("Close")
+                Text("Stop Alert")
             }
+        }
+    }
+}
+
+@Composable
+private fun AccentColorToggle(
+    selectedAccentColor: AppAccentColor,
+    onAccentSelected: (AppAccentColor) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        AccentColorButton(
+            accentColor = AppAccentColor.RED,
+            isSelected = selectedAccentColor == AppAccentColor.RED,
+            modifier = Modifier.weight(1f),
+            onClick = { onAccentSelected(AppAccentColor.RED) }
+        )
+        AccentColorButton(
+            accentColor = AppAccentColor.BLUE,
+            isSelected = selectedAccentColor == AppAccentColor.BLUE,
+            modifier = Modifier.weight(1f),
+            onClick = { onAccentSelected(AppAccentColor.BLUE) }
+        )
+        AccentColorButton(
+            accentColor = AppAccentColor.GREEN,
+            isSelected = selectedAccentColor == AppAccentColor.GREEN,
+            modifier = Modifier.weight(1f),
+            onClick = { onAccentSelected(AppAccentColor.GREEN) }
+        )
+        AccentColorButton(
+            accentColor = AppAccentColor.PURPLE,
+            isSelected = selectedAccentColor == AppAccentColor.PURPLE,
+            modifier = Modifier.weight(1f),
+            onClick = { onAccentSelected(AppAccentColor.PURPLE) }
+        )
+    }
+}
+
+@Composable
+private fun AccentColorButton(
+    accentColor: AppAccentColor,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Box(
+        modifier = modifier
+            .heightIn(min = 38.dp)
+            .pressScale(interactionSource, pressedScale = 0.94f)
+            .clip(shape)
+            .background(accentSwatchColor(accentColor), shape)
+            .border(
+                width = if (isSelected) 3.dp else 1.5.dp,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
+                },
+                shape = shape
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+    )
+}
+
+private fun accentSwatchColor(accentColor: AppAccentColor): Color = when (accentColor) {
+    AppAccentColor.RED -> RedAccent
+    AppAccentColor.BLUE -> BlueAccent
+    AppAccentColor.GREEN -> GreenAccent
+    AppAccentColor.PURPLE -> PurpleAccent
+}
+
+@Composable
+private fun ThemeModeToggle(
+    selectedThemeMode: AppThemeMode,
+    onThemeSelected: (AppThemeMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThemeModeButton(
+            label = "Dark",
+            isSelected = selectedThemeMode == AppThemeMode.DARK,
+            modifier = Modifier.weight(1f),
+            onClick = { onThemeSelected(AppThemeMode.DARK) }
+        )
+        ThemeModeButton(
+            label = "Light",
+            isSelected = selectedThemeMode == AppThemeMode.LIGHT,
+            modifier = Modifier.weight(1f),
+            onClick = { onThemeSelected(AppThemeMode.LIGHT) }
+        )
+        ThemeModeButton(
+            label = "OLED",
+            isSelected = selectedThemeMode == AppThemeMode.OLED,
+            modifier = Modifier.weight(1f),
+            onClick = { onThemeSelected(AppThemeMode.OLED) }
+        )
+    }
+}
+
+@Composable
+private fun ThemeModeButton(
+    label: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    if (isSelected) {
+        AnimatedButton(
+            onClick = onClick,
+            modifier = modifier.heightIn(min = 40.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        }
+    } else {
+        AnimatedOutlinedButton(
+            onClick = onClick,
+            modifier = modifier.heightIn(min = 40.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
     }
 }
@@ -676,13 +978,17 @@ private fun DialogCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            if (subtitle.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             content()
         }
     }
@@ -764,7 +1070,7 @@ private fun StepperButton(
     text: String,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
+    AnimatedOutlinedButton(
         onClick = onClick,
         modifier = Modifier
             .width(64.dp)
@@ -781,7 +1087,7 @@ private fun CompactStepperButton(
     text: String,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
+    AnimatedOutlinedButton(
         onClick = onClick,
         modifier = Modifier
             .width(56.dp)
@@ -791,6 +1097,95 @@ private fun CompactStepperButton(
     ) {
         Text(text = text, style = MaterialTheme.typography.headlineSmall)
     }
+}
+
+@Composable
+private fun AnimatedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.shape,
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    content: @Composable RowScope.() -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Button(
+        onClick = onClick,
+        modifier = modifier.pressScale(interactionSource),
+        enabled = enabled,
+        shape = shape,
+        colors = colors,
+        elevation = elevation,
+        contentPadding = contentPadding,
+        interactionSource = interactionSource,
+        content = content
+    )
+}
+
+@Composable
+private fun AnimatedOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.outlinedShape,
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    content: @Composable RowScope.() -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.pressScale(interactionSource),
+        enabled = enabled,
+        shape = shape,
+        colors = colors,
+        contentPadding = contentPadding,
+        interactionSource = interactionSource,
+        content = content
+    )
+}
+
+@Composable
+private fun AnimatedTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.textShape,
+    colors: ButtonColors = ButtonDefaults.textButtonColors(),
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    content: @Composable RowScope.() -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.pressScale(interactionSource),
+        enabled = enabled,
+        shape = shape,
+        colors = colors,
+        contentPadding = contentPadding,
+        interactionSource = interactionSource,
+        content = content
+    )
+}
+
+@Composable
+private fun Modifier.pressScale(
+    interactionSource: MutableInteractionSource,
+    pressedScale: Float = 0.96f
+): Modifier {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = tween(durationMillis = 90),
+        label = "button_press_scale"
+    )
+
+    return this.graphicsLayer(
+        scaleX = scale,
+        scaleY = scale
+    )
 }
 
 private fun formatDuration(totalSeconds: Int): String {
@@ -810,7 +1205,7 @@ private fun formatClock(totalSeconds: Int): String {
     return "%02d:%02d".format(minutes, seconds)
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 360)
+@Preview(showBackground = true, widthDp = 360, heightDp = 412)
 @Composable
 private fun TimerAppPreview() {
     FirstAppTheme {
