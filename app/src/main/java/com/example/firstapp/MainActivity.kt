@@ -3,11 +3,14 @@ package com.example.firstapp
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -55,10 +59,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +107,217 @@ private data class TimerItem(
     val isRunning: Boolean = false,
     val endTimeMillis: Long? = null
 )
+
+private enum class ControllerInput {
+    LEFT,
+    RIGHT,
+    UP,
+    DOWN,
+    PRIMARY,
+    BACK,
+    SECONDARY,
+    TERTIARY
+}
+
+private enum class DashboardFocusTarget {
+    SETTINGS,
+    CUSTOM,
+    PRESET_FIVE,
+    PRESET_TEN,
+    PRESET_FIFTEEN,
+    TIMER_0,
+    TIMER_1,
+    TIMER_2,
+    TIMER_3,
+    PREVIOUS_PAGE,
+    NEXT_PAGE
+}
+
+private enum class BuilderDialogFocusTarget {
+    MINUTES_DECREASE,
+    MINUTES_INCREASE,
+    SECONDS_DECREASE,
+    SECONDS_INCREASE,
+    CANCEL,
+    ADD_TIMER
+}
+
+private enum class SettingsDialogFocusTarget {
+    THEME_DARK,
+    THEME_LIGHT,
+    THEME_OLED,
+    ACCENT_RED,
+    ACCENT_BLUE,
+    ACCENT_GREEN,
+    ACCENT_PURPLE,
+    CLOSE
+}
+
+private fun androidx.compose.ui.input.key.KeyEvent.toControllerInput(): ControllerInput? = when (nativeKeyEvent.keyCode) {
+    AndroidKeyEvent.KEYCODE_DPAD_LEFT -> ControllerInput.LEFT
+    AndroidKeyEvent.KEYCODE_DPAD_RIGHT -> ControllerInput.RIGHT
+    AndroidKeyEvent.KEYCODE_DPAD_UP -> ControllerInput.UP
+    AndroidKeyEvent.KEYCODE_DPAD_DOWN -> ControllerInput.DOWN
+    AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+    AndroidKeyEvent.KEYCODE_ENTER,
+    AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+    AndroidKeyEvent.KEYCODE_BUTTON_A -> ControllerInput.PRIMARY
+    AndroidKeyEvent.KEYCODE_BUTTON_B -> ControllerInput.BACK
+    AndroidKeyEvent.KEYCODE_BUTTON_X -> ControllerInput.SECONDARY
+    AndroidKeyEvent.KEYCODE_BUTTON_Y -> ControllerInput.TERTIARY
+    else -> null
+}
+
+private fun DashboardFocusTarget.timerSlotIndexOrNull(): Int? = when (this) {
+    DashboardFocusTarget.TIMER_0 -> 0
+    DashboardFocusTarget.TIMER_1 -> 1
+    DashboardFocusTarget.TIMER_2 -> 2
+    DashboardFocusTarget.TIMER_3 -> 3
+    else -> null
+}
+
+private fun DashboardFocusTarget.toTimerOrNull(visibleTimers: List<TimerItem>): TimerItem? {
+    val slotIndex = timerSlotIndexOrNull() ?: return null
+    return visibleTimers.getOrNull(slotIndex)
+}
+
+private fun DashboardFocusTarget.sanitize(pageCount: Int): DashboardFocusTarget {
+    return if (pageCount <= 1 && (this == DashboardFocusTarget.PREVIOUS_PAGE || this == DashboardFocusTarget.NEXT_PAGE)) {
+        DashboardFocusTarget.TIMER_2
+    } else {
+        this
+    }
+}
+
+private fun DashboardFocusTarget.moveLeft(): DashboardFocusTarget = when (this) {
+    DashboardFocusTarget.SETTINGS -> DashboardFocusTarget.PRESET_FIFTEEN
+    DashboardFocusTarget.CUSTOM -> DashboardFocusTarget.CUSTOM
+    DashboardFocusTarget.PRESET_FIVE -> DashboardFocusTarget.CUSTOM
+    DashboardFocusTarget.PRESET_TEN -> DashboardFocusTarget.PRESET_FIVE
+    DashboardFocusTarget.PRESET_FIFTEEN -> DashboardFocusTarget.PRESET_TEN
+    DashboardFocusTarget.TIMER_0 -> DashboardFocusTarget.TIMER_0
+    DashboardFocusTarget.TIMER_1 -> DashboardFocusTarget.TIMER_0
+    DashboardFocusTarget.TIMER_2 -> DashboardFocusTarget.TIMER_2
+    DashboardFocusTarget.TIMER_3 -> DashboardFocusTarget.TIMER_2
+    DashboardFocusTarget.PREVIOUS_PAGE -> DashboardFocusTarget.PREVIOUS_PAGE
+    DashboardFocusTarget.NEXT_PAGE -> DashboardFocusTarget.PREVIOUS_PAGE
+}
+
+private fun DashboardFocusTarget.moveRight(): DashboardFocusTarget = when (this) {
+    DashboardFocusTarget.SETTINGS -> DashboardFocusTarget.SETTINGS
+    DashboardFocusTarget.CUSTOM -> DashboardFocusTarget.PRESET_FIVE
+    DashboardFocusTarget.PRESET_FIVE -> DashboardFocusTarget.PRESET_TEN
+    DashboardFocusTarget.PRESET_TEN -> DashboardFocusTarget.PRESET_FIFTEEN
+    DashboardFocusTarget.PRESET_FIFTEEN -> DashboardFocusTarget.SETTINGS
+    DashboardFocusTarget.TIMER_0 -> DashboardFocusTarget.TIMER_1
+    DashboardFocusTarget.TIMER_1 -> DashboardFocusTarget.TIMER_1
+    DashboardFocusTarget.TIMER_2 -> DashboardFocusTarget.TIMER_3
+    DashboardFocusTarget.TIMER_3 -> DashboardFocusTarget.TIMER_3
+    DashboardFocusTarget.PREVIOUS_PAGE -> DashboardFocusTarget.NEXT_PAGE
+    DashboardFocusTarget.NEXT_PAGE -> DashboardFocusTarget.NEXT_PAGE
+}
+
+private fun DashboardFocusTarget.moveUp(pageCount: Int): DashboardFocusTarget = when (this) {
+    DashboardFocusTarget.SETTINGS -> DashboardFocusTarget.SETTINGS
+    DashboardFocusTarget.CUSTOM -> DashboardFocusTarget.CUSTOM
+    DashboardFocusTarget.PRESET_FIVE -> DashboardFocusTarget.PRESET_FIVE
+    DashboardFocusTarget.PRESET_TEN -> DashboardFocusTarget.SETTINGS
+    DashboardFocusTarget.PRESET_FIFTEEN -> DashboardFocusTarget.SETTINGS
+    DashboardFocusTarget.TIMER_0 -> DashboardFocusTarget.CUSTOM
+    DashboardFocusTarget.TIMER_1 -> DashboardFocusTarget.PRESET_TEN
+    DashboardFocusTarget.TIMER_2 -> DashboardFocusTarget.TIMER_0
+    DashboardFocusTarget.TIMER_3 -> DashboardFocusTarget.TIMER_1
+    DashboardFocusTarget.PREVIOUS_PAGE -> DashboardFocusTarget.TIMER_2
+    DashboardFocusTarget.NEXT_PAGE -> DashboardFocusTarget.TIMER_3
+}.sanitize(pageCount)
+
+private fun DashboardFocusTarget.moveDown(pageCount: Int): DashboardFocusTarget = when (this) {
+    DashboardFocusTarget.SETTINGS -> DashboardFocusTarget.PRESET_FIFTEEN
+    DashboardFocusTarget.CUSTOM,
+    DashboardFocusTarget.PRESET_FIVE -> DashboardFocusTarget.TIMER_0
+    DashboardFocusTarget.PRESET_TEN,
+    DashboardFocusTarget.PRESET_FIFTEEN -> DashboardFocusTarget.TIMER_1
+    DashboardFocusTarget.TIMER_0 -> DashboardFocusTarget.TIMER_2
+    DashboardFocusTarget.TIMER_1 -> DashboardFocusTarget.TIMER_3
+    DashboardFocusTarget.TIMER_2 -> if (pageCount > 1) DashboardFocusTarget.PREVIOUS_PAGE else DashboardFocusTarget.TIMER_2
+    DashboardFocusTarget.TIMER_3 -> if (pageCount > 1) DashboardFocusTarget.NEXT_PAGE else DashboardFocusTarget.TIMER_3
+    DashboardFocusTarget.PREVIOUS_PAGE -> DashboardFocusTarget.PREVIOUS_PAGE
+    DashboardFocusTarget.NEXT_PAGE -> DashboardFocusTarget.NEXT_PAGE
+}.sanitize(pageCount)
+
+private fun BuilderDialogFocusTarget.moveLeft(): BuilderDialogFocusTarget = when (this) {
+    BuilderDialogFocusTarget.MINUTES_INCREASE -> BuilderDialogFocusTarget.MINUTES_DECREASE
+    BuilderDialogFocusTarget.SECONDS_INCREASE -> BuilderDialogFocusTarget.SECONDS_DECREASE
+    BuilderDialogFocusTarget.ADD_TIMER -> BuilderDialogFocusTarget.CANCEL
+    else -> this
+}
+
+private fun BuilderDialogFocusTarget.moveRight(): BuilderDialogFocusTarget = when (this) {
+    BuilderDialogFocusTarget.MINUTES_DECREASE -> BuilderDialogFocusTarget.MINUTES_INCREASE
+    BuilderDialogFocusTarget.SECONDS_DECREASE -> BuilderDialogFocusTarget.SECONDS_INCREASE
+    BuilderDialogFocusTarget.CANCEL -> BuilderDialogFocusTarget.ADD_TIMER
+    else -> this
+}
+
+private fun BuilderDialogFocusTarget.moveUp(): BuilderDialogFocusTarget = when (this) {
+    BuilderDialogFocusTarget.SECONDS_DECREASE -> BuilderDialogFocusTarget.MINUTES_DECREASE
+    BuilderDialogFocusTarget.SECONDS_INCREASE -> BuilderDialogFocusTarget.MINUTES_INCREASE
+    BuilderDialogFocusTarget.CANCEL -> BuilderDialogFocusTarget.SECONDS_DECREASE
+    BuilderDialogFocusTarget.ADD_TIMER -> BuilderDialogFocusTarget.SECONDS_INCREASE
+    else -> this
+}
+
+private fun BuilderDialogFocusTarget.moveDown(): BuilderDialogFocusTarget = when (this) {
+    BuilderDialogFocusTarget.MINUTES_DECREASE -> BuilderDialogFocusTarget.SECONDS_DECREASE
+    BuilderDialogFocusTarget.MINUTES_INCREASE -> BuilderDialogFocusTarget.SECONDS_INCREASE
+    BuilderDialogFocusTarget.SECONDS_DECREASE -> BuilderDialogFocusTarget.CANCEL
+    BuilderDialogFocusTarget.SECONDS_INCREASE -> BuilderDialogFocusTarget.ADD_TIMER
+    else -> this
+}
+
+private fun SettingsDialogFocusTarget.moveLeft(): SettingsDialogFocusTarget = when (this) {
+    SettingsDialogFocusTarget.THEME_LIGHT -> SettingsDialogFocusTarget.THEME_DARK
+    SettingsDialogFocusTarget.THEME_OLED -> SettingsDialogFocusTarget.THEME_LIGHT
+    SettingsDialogFocusTarget.ACCENT_BLUE -> SettingsDialogFocusTarget.ACCENT_RED
+    SettingsDialogFocusTarget.ACCENT_GREEN -> SettingsDialogFocusTarget.ACCENT_BLUE
+    SettingsDialogFocusTarget.ACCENT_PURPLE -> SettingsDialogFocusTarget.ACCENT_GREEN
+    else -> this
+}
+
+private fun SettingsDialogFocusTarget.moveRight(): SettingsDialogFocusTarget = when (this) {
+    SettingsDialogFocusTarget.THEME_DARK -> SettingsDialogFocusTarget.THEME_LIGHT
+    SettingsDialogFocusTarget.THEME_LIGHT -> SettingsDialogFocusTarget.THEME_OLED
+    SettingsDialogFocusTarget.ACCENT_RED -> SettingsDialogFocusTarget.ACCENT_BLUE
+    SettingsDialogFocusTarget.ACCENT_BLUE -> SettingsDialogFocusTarget.ACCENT_GREEN
+    SettingsDialogFocusTarget.ACCENT_GREEN -> SettingsDialogFocusTarget.ACCENT_PURPLE
+    else -> this
+}
+
+private fun SettingsDialogFocusTarget.moveUp(): SettingsDialogFocusTarget = when (this) {
+    SettingsDialogFocusTarget.ACCENT_RED -> SettingsDialogFocusTarget.THEME_DARK
+    SettingsDialogFocusTarget.ACCENT_BLUE -> SettingsDialogFocusTarget.THEME_LIGHT
+    SettingsDialogFocusTarget.ACCENT_GREEN,
+    SettingsDialogFocusTarget.ACCENT_PURPLE -> SettingsDialogFocusTarget.THEME_OLED
+    SettingsDialogFocusTarget.CLOSE -> SettingsDialogFocusTarget.ACCENT_BLUE
+    else -> this
+}
+
+private fun SettingsDialogFocusTarget.moveDown(): SettingsDialogFocusTarget = when (this) {
+    SettingsDialogFocusTarget.THEME_DARK -> SettingsDialogFocusTarget.ACCENT_RED
+    SettingsDialogFocusTarget.THEME_LIGHT -> SettingsDialogFocusTarget.ACCENT_BLUE
+    SettingsDialogFocusTarget.THEME_OLED -> SettingsDialogFocusTarget.ACCENT_GREEN
+    SettingsDialogFocusTarget.ACCENT_RED,
+    SettingsDialogFocusTarget.ACCENT_BLUE,
+    SettingsDialogFocusTarget.ACCENT_GREEN,
+    SettingsDialogFocusTarget.ACCENT_PURPLE -> SettingsDialogFocusTarget.CLOSE
+    SettingsDialogFocusTarget.CLOSE -> SettingsDialogFocusTarget.CLOSE
+}
+
+private fun AppThemeMode.toSettingsFocusTarget(): SettingsDialogFocusTarget = when (this) {
+    AppThemeMode.DARK -> SettingsDialogFocusTarget.THEME_DARK
+    AppThemeMode.LIGHT -> SettingsDialogFocusTarget.THEME_LIGHT
+    AppThemeMode.OLED -> SettingsDialogFocusTarget.THEME_OLED
+}
 
 @Composable
 fun TimerApp() {
@@ -305,42 +526,134 @@ private fun DashboardScreen(
     onPreviousPage: () -> Unit,
     onNextPage: () -> Unit
 ) {
-    Column(
+    var focusedTargetName by rememberSaveable { mutableStateOf(DashboardFocusTarget.CUSTOM.name) }
+    val focusedTarget = DashboardFocusTarget.valueOf(focusedTargetName)
+
+    LaunchedEffect(pageCount) {
+        focusedTargetName = focusedTarget.sanitize(pageCount).name
+    }
+
+    ControllerInputBox(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        HeaderSection(onOpenSettings = onOpenSettings)
-        ActionSection(
-            onOpenBuilder = onOpenBuilder,
-            onQuickAdd = onQuickAdd
-        )
-        TimerGrid(
-            timers = visibleTimers,
-            onStartPause = onStartPause,
-            onReset = onReset,
-            onRemove = onRemove,
+            .background(MaterialTheme.colorScheme.background),
+        onControllerInput = { input ->
+            when (input) {
+                ControllerInput.LEFT -> {
+                    focusedTargetName = focusedTarget.moveLeft().name
+                    true
+                }
+
+                ControllerInput.RIGHT -> {
+                    focusedTargetName = focusedTarget.moveRight().name
+                    true
+                }
+
+                ControllerInput.UP -> {
+                    focusedTargetName = focusedTarget.moveUp(pageCount).name
+                    true
+                }
+
+                ControllerInput.DOWN -> {
+                    focusedTargetName = focusedTarget.moveDown(pageCount).name
+                    true
+                }
+
+                ControllerInput.PRIMARY -> {
+                    when (focusedTarget) {
+                        DashboardFocusTarget.SETTINGS -> onOpenSettings()
+                        DashboardFocusTarget.CUSTOM -> onOpenBuilder()
+                        DashboardFocusTarget.PRESET_FIVE -> {
+                            onQuickAdd(300)
+                            focusedTargetName = DashboardFocusTarget.TIMER_0.name
+                        }
+
+                        DashboardFocusTarget.PRESET_TEN -> {
+                            onQuickAdd(600)
+                            focusedTargetName = DashboardFocusTarget.TIMER_0.name
+                        }
+
+                        DashboardFocusTarget.PRESET_FIFTEEN -> {
+                            onQuickAdd(900)
+                            focusedTargetName = DashboardFocusTarget.TIMER_0.name
+                        }
+
+                        DashboardFocusTarget.TIMER_0,
+                        DashboardFocusTarget.TIMER_1,
+                        DashboardFocusTarget.TIMER_2,
+                        DashboardFocusTarget.TIMER_3 -> {
+                            val timer = focusedTarget.toTimerOrNull(visibleTimers)
+                            if (timer != null) {
+                                onStartPause(timer.id)
+                            } else {
+                                onOpenBuilder()
+                            }
+                        }
+
+                        DashboardFocusTarget.PREVIOUS_PAGE -> onPreviousPage()
+                        DashboardFocusTarget.NEXT_PAGE -> onNextPage()
+                    }
+                    true
+                }
+
+                ControllerInput.BACK -> true
+
+                ControllerInput.SECONDARY -> {
+                    focusedTarget.toTimerOrNull(visibleTimers)?.let { onReset(it.id) }
+                    true
+                }
+
+                ControllerInput.TERTIARY -> {
+                    focusedTarget.toTimerOrNull(visibleTimers)?.let { onRemove(it.id) }
+                    true
+                }
+            }
+        }) {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        )
-        if (pageCount > 1) {
-            PageControls(
-                currentPage = currentPage,
-                pageCount = pageCount,
-                canGoBack = currentPage > 0,
-                canGoForward = currentPage < pageCount - 1,
-                onPreviousPage = onPreviousPage,
-                onNextPage = onNextPage
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            HeaderSection(
+                onOpenSettings = onOpenSettings,
+                isSettingsFocused = focusedTarget == DashboardFocusTarget.SETTINGS
             )
+            ActionSection(
+                onOpenBuilder = onOpenBuilder,
+                onQuickAdd = onQuickAdd,
+                focusedTarget = focusedTarget
+            )
+            TimerGrid(
+                timers = visibleTimers,
+                focusedTarget = focusedTarget,
+                onStartPause = onStartPause,
+                onReset = onReset,
+                onRemove = onRemove,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+            if (pageCount > 1) {
+                PageControls(
+                    currentPage = currentPage,
+                    pageCount = pageCount,
+                    canGoBack = currentPage > 0,
+                    canGoForward = currentPage < pageCount - 1,
+                    focusedTarget = focusedTarget,
+                    onPreviousPage = onPreviousPage,
+                    onNextPage = onNextPage
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun HeaderSection(onOpenSettings: () -> Unit) {
+private fun HeaderSection(
+    onOpenSettings: () -> Unit,
+    isSettingsFocused: Boolean
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -357,6 +670,7 @@ private fun HeaderSection(onOpenSettings: () -> Unit) {
             modifier = Modifier
                 .width(50.dp)
                 .height(46.dp),
+            controllerFocused = isSettingsFocused,
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(0.dp)
         ) {
@@ -372,7 +686,8 @@ private fun HeaderSection(onOpenSettings: () -> Unit) {
 @Composable
 private fun ActionSection(
     onOpenBuilder: () -> Unit,
-    onQuickAdd: (Int) -> Unit
+    onQuickAdd: (Int) -> Unit,
+    focusedTarget: DashboardFocusTarget
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedButton(
@@ -380,6 +695,7 @@ private fun ActionSection(
             modifier = Modifier
                 .weight(1.3f)
                 .heightIn(min = 56.dp),
+            controllerFocused = focusedTarget == DashboardFocusTarget.CUSTOM,
             shape = RoundedCornerShape(22.dp)
         ) {
             Text(text = "Custom", style = MaterialTheme.typography.titleMedium)
@@ -388,16 +704,19 @@ private fun ActionSection(
         QuickAddButton(
             label = "5m",
             modifier = Modifier.weight(1f),
+            isControllerFocused = focusedTarget == DashboardFocusTarget.PRESET_FIVE,
             onClick = { onQuickAdd(300) }
         )
         QuickAddButton(
             label = "10m",
             modifier = Modifier.weight(1f),
+            isControllerFocused = focusedTarget == DashboardFocusTarget.PRESET_TEN,
             onClick = { onQuickAdd(600) }
         )
         QuickAddButton(
             label = "15m",
             modifier = Modifier.weight(1f),
+            isControllerFocused = focusedTarget == DashboardFocusTarget.PRESET_FIFTEEN,
             onClick = { onQuickAdd(900) }
         )
     }
@@ -407,11 +726,13 @@ private fun ActionSection(
 private fun QuickAddButton(
     label: String,
     modifier: Modifier = Modifier,
+    isControllerFocused: Boolean = false,
     onClick: () -> Unit
 ) {
     AnimatedOutlinedButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 56.dp),
+        controllerFocused = isControllerFocused,
         shape = RoundedCornerShape(22.dp)
     ) {
         Text(text = label, style = MaterialTheme.typography.titleSmall)
@@ -421,6 +742,7 @@ private fun QuickAddButton(
 @Composable
 private fun TimerGrid(
     timers: List<TimerItem>,
+    focusedTarget: DashboardFocusTarget,
     onStartPause: (Int) -> Unit,
     onReset: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -437,16 +759,18 @@ private fun TimerGrid(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        slots.chunked(2).forEach { rowTimers ->
+        slots.chunked(2).forEachIndexed { rowIndex, rowTimers ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                rowTimers.forEach { timer ->
+                rowTimers.forEachIndexed { columnIndex, timer ->
+                    val slotIndex = rowIndex * 2 + columnIndex
                     TimerSlot(
                         timer = timer,
+                        isControllerFocused = focusedTarget.timerSlotIndexOrNull() == slotIndex,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
@@ -463,6 +787,7 @@ private fun TimerGrid(
 @Composable
 private fun TimerSlot(
     timer: TimerItem?,
+    isControllerFocused: Boolean,
     modifier: Modifier = Modifier,
     onStartPause: (Int) -> Unit,
     onReset: (Int) -> Unit,
@@ -475,7 +800,16 @@ private fun TimerSlot(
         MaterialTheme.colorScheme.surfaceVariant
     }
     val slotBorder = if (isEmptySlot) {
-        BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.9f))
+        BorderStroke(
+            if (isControllerFocused) 2.5.dp else 1.5.dp,
+            if (isControllerFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.9f)
+            }
+        )
+    } else if (isControllerFocused) {
+        BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary)
     } else {
         null
     }
@@ -500,13 +834,21 @@ private fun TimerSlot(
                     Text(
                         text = "Empty slot",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isControllerFocused) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "Ready for timer",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = if (isControllerFocused) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
                         textAlign = TextAlign.Center
                     )
                 }
@@ -624,6 +966,7 @@ private fun PageControls(
     pageCount: Int,
     canGoBack: Boolean,
     canGoForward: Boolean,
+    focusedTarget: DashboardFocusTarget,
     onPreviousPage: () -> Unit,
     onNextPage: () -> Unit
 ) {
@@ -638,6 +981,7 @@ private fun PageControls(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 44.dp),
+            controllerFocused = focusedTarget == DashboardFocusTarget.PREVIOUS_PAGE,
             shape = RoundedCornerShape(18.dp)
         ) {
             Text("Previous")
@@ -660,6 +1004,7 @@ private fun PageControls(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 44.dp),
+            controllerFocused = focusedTarget == DashboardFocusTarget.NEXT_PAGE,
             shape = RoundedCornerShape(18.dp)
         ) {
             Text("Next")
@@ -674,14 +1019,66 @@ private fun TimerBuilderDialog(
 ) {
     var minutes by rememberSaveable { mutableIntStateOf(0) }
     var seconds by rememberSaveable { mutableIntStateOf(30) }
+    var focusedTargetName by rememberSaveable { mutableStateOf(BuilderDialogFocusTarget.MINUTES_INCREASE.name) }
+    val focusedTarget = BuilderDialogFocusTarget.valueOf(focusedTargetName)
+    val canAddTimer = minutes > 0 || seconds > 0
 
-    AppDialog(onDismiss = onDismiss) {
+    AppDialog(
+        onDismiss = onDismiss,
+        onControllerInput = { input ->
+            when (input) {
+                ControllerInput.LEFT -> {
+                    focusedTargetName = focusedTarget.moveLeft().name
+                    true
+                }
+
+                ControllerInput.RIGHT -> {
+                    focusedTargetName = focusedTarget.moveRight().name
+                    true
+                }
+
+                ControllerInput.UP -> {
+                    focusedTargetName = focusedTarget.moveUp().name
+                    true
+                }
+
+                ControllerInput.DOWN -> {
+                    focusedTargetName = focusedTarget.moveDown().name
+                    true
+                }
+
+                ControllerInput.PRIMARY -> {
+                    when (focusedTarget) {
+                        BuilderDialogFocusTarget.MINUTES_DECREASE -> minutes = (minutes - 1).coerceAtLeast(0)
+                        BuilderDialogFocusTarget.MINUTES_INCREASE -> minutes = (minutes + 1).coerceAtMost(99)
+                        BuilderDialogFocusTarget.SECONDS_DECREASE -> seconds = (seconds - 15).coerceAtLeast(0)
+                        BuilderDialogFocusTarget.SECONDS_INCREASE -> seconds = (seconds + 15).coerceAtMost(45)
+                        BuilderDialogFocusTarget.CANCEL -> onDismiss()
+                        BuilderDialogFocusTarget.ADD_TIMER -> if (canAddTimer) {
+                            onAddTimer(minutes * 60 + seconds)
+                        }
+                    }
+                    true
+                }
+
+                ControllerInput.BACK -> {
+                    onDismiss()
+                    true
+                }
+
+                ControllerInput.SECONDARY,
+                ControllerInput.TERTIARY -> true
+            }
+        }
+    ) {
         DialogCard(title = "Create Timer", subtitle = "Set a timer without leaving the main screen.") {
             CompactStepperRow(
                 label = "Min",
                 value = minutes,
                 onDecrease = { minutes = (minutes - 1).coerceAtLeast(0) },
                 onIncrease = { minutes = (minutes + 1).coerceAtMost(99) },
+                decreaseFocused = focusedTarget == BuilderDialogFocusTarget.MINUTES_DECREASE,
+                increaseFocused = focusedTarget == BuilderDialogFocusTarget.MINUTES_INCREASE,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -692,6 +1089,8 @@ private fun TimerBuilderDialog(
                 value = seconds,
                 onDecrease = { seconds = (seconds - 15).coerceAtLeast(0) },
                 onIncrease = { seconds = (seconds + 15).coerceAtMost(45) },
+                decreaseFocused = focusedTarget == BuilderDialogFocusTarget.SECONDS_DECREASE,
+                increaseFocused = focusedTarget == BuilderDialogFocusTarget.SECONDS_INCREASE,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -706,6 +1105,7 @@ private fun TimerBuilderDialog(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp),
+                    controllerFocused = focusedTarget == BuilderDialogFocusTarget.CANCEL,
                     shape = RoundedCornerShape(18.dp)
                 ) {
                     Text("Cancel")
@@ -713,10 +1113,11 @@ private fun TimerBuilderDialog(
 
                 AnimatedButton(
                     onClick = { onAddTimer(minutes * 60 + seconds) },
-                    enabled = minutes > 0 || seconds > 0,
+                    enabled = canAddTimer,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp),
+                    controllerFocused = focusedTarget == BuilderDialogFocusTarget.ADD_TIMER,
                     shape = RoundedCornerShape(18.dp)
                 ) {
                     Text("Add Timer")
@@ -734,7 +1135,57 @@ private fun SettingsDialog(
     onAccentSelected: (AppAccentColor) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AppDialog(onDismiss = onDismiss) {
+    var focusedTargetName by rememberSaveable { mutableStateOf(selectedThemeMode.toSettingsFocusTarget().name) }
+    val focusedTarget = SettingsDialogFocusTarget.valueOf(focusedTargetName)
+
+    AppDialog(
+        onDismiss = onDismiss,
+        onControllerInput = { input ->
+            when (input) {
+                ControllerInput.LEFT -> {
+                    focusedTargetName = focusedTarget.moveLeft().name
+                    true
+                }
+
+                ControllerInput.RIGHT -> {
+                    focusedTargetName = focusedTarget.moveRight().name
+                    true
+                }
+
+                ControllerInput.UP -> {
+                    focusedTargetName = focusedTarget.moveUp().name
+                    true
+                }
+
+                ControllerInput.DOWN -> {
+                    focusedTargetName = focusedTarget.moveDown().name
+                    true
+                }
+
+                ControllerInput.PRIMARY -> {
+                    when (focusedTarget) {
+                        SettingsDialogFocusTarget.THEME_DARK -> onThemeSelected(AppThemeMode.DARK)
+                        SettingsDialogFocusTarget.THEME_LIGHT -> onThemeSelected(AppThemeMode.LIGHT)
+                        SettingsDialogFocusTarget.THEME_OLED -> onThemeSelected(AppThemeMode.OLED)
+                        SettingsDialogFocusTarget.ACCENT_RED -> onAccentSelected(AppAccentColor.RED)
+                        SettingsDialogFocusTarget.ACCENT_BLUE -> onAccentSelected(AppAccentColor.BLUE)
+                        SettingsDialogFocusTarget.ACCENT_GREEN -> onAccentSelected(AppAccentColor.GREEN)
+                        SettingsDialogFocusTarget.ACCENT_PURPLE -> onAccentSelected(AppAccentColor.PURPLE)
+                        SettingsDialogFocusTarget.CLOSE -> onDismiss()
+                    }
+                    true
+                }
+
+                ControllerInput.BACK -> {
+                    onDismiss()
+                    true
+                }
+
+                ControllerInput.SECONDARY,
+                ControllerInput.TERTIARY -> true
+            }
+        }
+    ) {
         DialogCard(title = "Settings", subtitle = "") {
             Text(
                 text = "Theme",
@@ -747,6 +1198,7 @@ private fun SettingsDialog(
 
             ThemeModeToggle(
                 selectedThemeMode = selectedThemeMode,
+                focusedTarget = focusedTarget,
                 onThemeSelected = onThemeSelected
             )
 
@@ -763,6 +1215,7 @@ private fun SettingsDialog(
 
             AccentColorToggle(
                 selectedAccentColor = selectedAccentColor,
+                focusedTarget = focusedTarget,
                 onAccentSelected = onAccentSelected
             )
 
@@ -773,6 +1226,7 @@ private fun SettingsDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 42.dp),
+                controllerFocused = focusedTarget == SettingsDialogFocusTarget.CLOSE,
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Text("Close")
@@ -785,19 +1239,59 @@ private fun SettingsDialog(
 private fun FinishedTimerDialog(
     onStopAlert: () -> Unit
 ) {
-    AppDialog(onDismiss = onStopAlert) {
-        DialogCard(
-            title = "Timer Finished",
-            subtitle = "A timer has completed. Stop the alert when you are ready."
+    AppDialog(
+        onDismiss = onStopAlert,
+        onControllerInput = { input ->
+            when (input) {
+                ControllerInput.PRIMARY,
+                ControllerInput.BACK -> {
+                    onStopAlert()
+                    true
+                }
+
+                ControllerInput.LEFT,
+                ControllerInput.RIGHT,
+                ControllerInput.UP,
+                ControllerInput.DOWN,
+                ControllerInput.SECONDARY,
+                ControllerInput.TERTIARY -> true
+            }
+        }
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.68f),
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            AnimatedButton(
-                onClick = onStopAlert,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-                shape = RoundedCornerShape(18.dp)
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Stop Alert")
+                Text(
+                    text = "Timer Finished",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                AnimatedButton(
+                    onClick = onStopAlert,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 96.dp),
+                    controllerFocused = true,
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text(
+                        text = "Stop Alert",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -806,6 +1300,7 @@ private fun FinishedTimerDialog(
 @Composable
 private fun AccentColorToggle(
     selectedAccentColor: AppAccentColor,
+    focusedTarget: SettingsDialogFocusTarget,
     onAccentSelected: (AppAccentColor) -> Unit
 ) {
     Row(
@@ -815,24 +1310,28 @@ private fun AccentColorToggle(
         AccentColorButton(
             accentColor = AppAccentColor.RED,
             isSelected = selectedAccentColor == AppAccentColor.RED,
+            isControllerFocused = focusedTarget == SettingsDialogFocusTarget.ACCENT_RED,
             modifier = Modifier.weight(1f),
             onClick = { onAccentSelected(AppAccentColor.RED) }
         )
         AccentColorButton(
             accentColor = AppAccentColor.BLUE,
             isSelected = selectedAccentColor == AppAccentColor.BLUE,
+            isControllerFocused = focusedTarget == SettingsDialogFocusTarget.ACCENT_BLUE,
             modifier = Modifier.weight(1f),
             onClick = { onAccentSelected(AppAccentColor.BLUE) }
         )
         AccentColorButton(
             accentColor = AppAccentColor.GREEN,
             isSelected = selectedAccentColor == AppAccentColor.GREEN,
+            isControllerFocused = focusedTarget == SettingsDialogFocusTarget.ACCENT_GREEN,
             modifier = Modifier.weight(1f),
             onClick = { onAccentSelected(AppAccentColor.GREEN) }
         )
         AccentColorButton(
             accentColor = AppAccentColor.PURPLE,
             isSelected = selectedAccentColor == AppAccentColor.PURPLE,
+            isControllerFocused = focusedTarget == SettingsDialogFocusTarget.ACCENT_PURPLE,
             modifier = Modifier.weight(1f),
             onClick = { onAccentSelected(AppAccentColor.PURPLE) }
         )
@@ -843,11 +1342,13 @@ private fun AccentColorToggle(
 private fun AccentColorButton(
     accentColor: AppAccentColor,
     isSelected: Boolean,
+    isControllerFocused: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(16.dp)
     val interactionSource = remember { MutableInteractionSource() }
+    val view = LocalView.current
 
     Box(
         modifier = modifier
@@ -856,18 +1357,26 @@ private fun AccentColorButton(
             .clip(shape)
             .background(accentSwatchColor(accentColor), shape)
             .border(
-                width = if (isSelected) 3.dp else 1.5.dp,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
+                width = when {
+                    isControllerFocused && isSelected -> 4.dp
+                    isControllerFocused -> 3.dp
+                    isSelected -> 3.dp
+                    else -> 1.5.dp
+                },
+                color = when {
+                    isControllerFocused -> MaterialTheme.colorScheme.onSurface
+                    isSelected -> MaterialTheme.colorScheme.onSurface
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.75f)
                 },
                 shape = shape
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    onClick()
+                }
             )
     )
 }
@@ -882,6 +1391,7 @@ private fun accentSwatchColor(accentColor: AppAccentColor): Color = when (accent
 @Composable
 private fun ThemeModeToggle(
     selectedThemeMode: AppThemeMode,
+    focusedTarget: SettingsDialogFocusTarget,
     onThemeSelected: (AppThemeMode) -> Unit
 ) {
     Row(
@@ -891,18 +1401,21 @@ private fun ThemeModeToggle(
         ThemeModeButton(
             label = "Dark",
             isSelected = selectedThemeMode == AppThemeMode.DARK,
+            controllerFocused = focusedTarget == SettingsDialogFocusTarget.THEME_DARK,
             modifier = Modifier.weight(1f),
             onClick = { onThemeSelected(AppThemeMode.DARK) }
         )
         ThemeModeButton(
             label = "Light",
             isSelected = selectedThemeMode == AppThemeMode.LIGHT,
+            controllerFocused = focusedTarget == SettingsDialogFocusTarget.THEME_LIGHT,
             modifier = Modifier.weight(1f),
             onClick = { onThemeSelected(AppThemeMode.LIGHT) }
         )
         ThemeModeButton(
             label = "OLED",
             isSelected = selectedThemeMode == AppThemeMode.OLED,
+            controllerFocused = focusedTarget == SettingsDialogFocusTarget.THEME_OLED,
             modifier = Modifier.weight(1f),
             onClick = { onThemeSelected(AppThemeMode.OLED) }
         )
@@ -913,6 +1426,7 @@ private fun ThemeModeToggle(
 private fun ThemeModeButton(
     label: String,
     isSelected: Boolean,
+    controllerFocused: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -920,6 +1434,7 @@ private fun ThemeModeButton(
         AnimatedButton(
             onClick = onClick,
             modifier = modifier.heightIn(min = 40.dp),
+            controllerFocused = controllerFocused,
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
@@ -928,6 +1443,7 @@ private fun ThemeModeButton(
         AnimatedOutlinedButton(
             onClick = onClick,
             modifier = modifier.heightIn(min = 40.dp),
+            controllerFocused = controllerFocused,
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
@@ -938,6 +1454,7 @@ private fun ThemeModeButton(
 @Composable
 private fun AppDialog(
     onDismiss: () -> Unit,
+    onControllerInput: ((ControllerInput) -> Boolean)? = null,
     content: @Composable () -> Unit
 ) {
     Dialog(
@@ -948,14 +1465,26 @@ private fun AppDialog(
             usePlatformDefaultWidth = false
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f))
-                .padding(14.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            content()
+        val dialogModifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.85f))
+            .padding(14.dp)
+
+        if (onControllerInput != null) {
+            ControllerInputBox(
+                modifier = dialogModifier,
+                onControllerInput = onControllerInput,
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
+        } else {
+            Box(
+                modifier = dialogModifier,
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
         }
     }
 }
@@ -999,14 +1528,20 @@ private fun StepperRow(
     label: String,
     value: Int,
     onDecrease: () -> Unit,
-    onIncrease: () -> Unit
+    onIncrease: () -> Unit,
+    decreaseFocused: Boolean = false,
+    increaseFocused: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        StepperButton(text = "-", onClick = onDecrease)
+        StepperButton(
+            text = "-",
+            controllerFocused = decreaseFocused,
+            onClick = onDecrease
+        )
 
         Box(
             modifier = Modifier
@@ -1026,7 +1561,11 @@ private fun StepperRow(
             )
         }
 
-        StepperButton(text = "+", onClick = onIncrease)
+        StepperButton(
+            text = "+",
+            controllerFocused = increaseFocused,
+            onClick = onIncrease
+        )
     }
 }
 
@@ -1036,6 +1575,8 @@ private fun CompactStepperRow(
     value: Int,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
+    decreaseFocused: Boolean = false,
+    increaseFocused: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -1043,7 +1584,11 @@ private fun CompactStepperRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CompactStepperButton(text = "-", onClick = onDecrease)
+        CompactStepperButton(
+            text = "-",
+            controllerFocused = decreaseFocused,
+            onClick = onDecrease
+        )
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -1061,13 +1606,18 @@ private fun CompactStepperRow(
                 textAlign = TextAlign.Center
             )
         }
-        CompactStepperButton(text = "+", onClick = onIncrease)
+        CompactStepperButton(
+            text = "+",
+            controllerFocused = increaseFocused,
+            onClick = onIncrease
+        )
     }
 }
 
 @Composable
 private fun StepperButton(
     text: String,
+    controllerFocused: Boolean = false,
     onClick: () -> Unit
 ) {
     AnimatedOutlinedButton(
@@ -1075,6 +1625,7 @@ private fun StepperButton(
         modifier = Modifier
             .width(64.dp)
             .heightIn(min = 56.dp),
+        controllerFocused = controllerFocused,
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
     ) {
@@ -1085,6 +1636,7 @@ private fun StepperButton(
 @Composable
 private fun CompactStepperButton(
     text: String,
+    controllerFocused: Boolean = false,
     onClick: () -> Unit
 ) {
     AnimatedOutlinedButton(
@@ -1092,6 +1644,7 @@ private fun CompactStepperButton(
         modifier = Modifier
             .width(56.dp)
             .heightIn(min = 52.dp),
+        controllerFocused = controllerFocused,
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
     ) {
@@ -1104,6 +1657,7 @@ private fun AnimatedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    controllerFocused: Boolean = false,
     shape: Shape = ButtonDefaults.shape,
     colors: ButtonColors = ButtonDefaults.buttonColors(),
     elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
@@ -1111,9 +1665,19 @@ private fun AnimatedButton(
     content: @Composable RowScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val view = LocalView.current
     Button(
-        onClick = onClick,
-        modifier = modifier.pressScale(interactionSource),
+        onClick = {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            onClick()
+        },
+        modifier = modifier
+            .controllerFocusOutline(
+                isFocused = controllerFocused,
+                shape = shape,
+                color = MaterialTheme.colorScheme.primary
+            )
+            .pressScale(interactionSource),
         enabled = enabled,
         shape = shape,
         colors = colors,
@@ -1129,15 +1693,26 @@ private fun AnimatedOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    controllerFocused: Boolean = false,
     shape: Shape = ButtonDefaults.outlinedShape,
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val view = LocalView.current
     OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.pressScale(interactionSource),
+        onClick = {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            onClick()
+        },
+        modifier = modifier
+            .controllerFocusOutline(
+                isFocused = controllerFocused,
+                shape = shape,
+                color = MaterialTheme.colorScheme.primary
+            )
+            .pressScale(interactionSource),
         enabled = enabled,
         shape = shape,
         colors = colors,
@@ -1152,15 +1727,26 @@ private fun AnimatedTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    controllerFocused: Boolean = false,
     shape: Shape = ButtonDefaults.textShape,
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
     contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
     content: @Composable RowScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val view = LocalView.current
     TextButton(
-        onClick = onClick,
-        modifier = modifier.pressScale(interactionSource),
+        onClick = {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            onClick()
+        },
+        modifier = modifier
+            .controllerFocusOutline(
+                isFocused = controllerFocused,
+                shape = shape,
+                color = MaterialTheme.colorScheme.primary
+            )
+            .pressScale(interactionSource),
         enabled = enabled,
         shape = shape,
         colors = colors,
@@ -1168,6 +1754,55 @@ private fun AnimatedTextButton(
         interactionSource = interactionSource,
         content = content
     )
+}
+
+@Composable
+private fun ControllerInputBox(
+    onControllerInput: (ControllerInput) -> Boolean,
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.TopStart,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    val view = LocalView.current
+
+    SideEffect {
+        focusRequester.requestFocus()
+    }
+
+    Box(
+        modifier = modifier
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type != KeyEventType.KeyDown) {
+                    return@onPreviewKeyEvent false
+                }
+
+                val controllerInput = keyEvent.toControllerInput() ?: return@onPreviewKeyEvent false
+                val handled = onControllerInput(controllerInput)
+
+                if (handled && controllerInput == ControllerInput.PRIMARY) {
+                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+
+                handled
+            },
+        contentAlignment = contentAlignment,
+        content = content
+    )
+}
+
+private fun Modifier.controllerFocusOutline(
+    isFocused: Boolean,
+    shape: Shape,
+    color: Color
+): Modifier {
+    return if (isFocused) {
+        border(2.5.dp, color, shape)
+    } else {
+        this
+    }
 }
 
 @Composable
