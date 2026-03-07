@@ -41,11 +41,11 @@ HARDWARE TARGET / SCREEN TARGET
 - No special multi-window logic unless explicitly requested later
 - Working bottom-screen emulation target for development:
   - Screen size: 3.92 inches
-  - Resolution: 1240 x 1080
+  - Resolution: 1080 x 1240
 - Design assumption:
-  - This is a compact, somewhat squarish screen compared to a normal phone
+  - This is a compact portrait-oriented screen that is still unusual compared to a normal phone
   - UI should prioritize readability, touch targets, and low clutter
-  - Layouts should avoid tall-phone assumptions
+  - Layouts should avoid assuming a large normal phone canvas
   - Vertical space is limited enough that oversized headers and large stacked controls can easily break the layout
 
 CURRENT DEVELOPMENT STACK
@@ -81,7 +81,7 @@ CURRENT TESTING / EMULATOR CONTEXT
   - Device name: AYN Thor Bottom Screen
   - Device type: Phone/Tablet
   - Screen size: 3.92
-  - Resolution: 1240 x 1080
+  - Resolution: 1080 x 1240
   - Round screen: off
   - RAM: 2048 MB
   - Hardware buttons: off
@@ -362,7 +362,7 @@ DESIGN / UX GUIDELINES FOR THIS APP
   - Box
 - Favor visible primary actions on the main screen.
 - Do not hide essential timer actions behind scrolling.
-- Test visually against the custom 1240 x 1080, 3.92-inch emulator profile whenever possible.
+- Test visually against the custom 1080 x 1240, 3.92-inch emulator profile whenever possible.
 
 CODING PREFERENCES FOR FUTURE WORK
 - Use idiomatic Kotlin.
