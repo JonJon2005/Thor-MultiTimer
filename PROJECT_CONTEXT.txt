@@ -5,416 +5,457 @@ PROJECT OVERVIEW
 - Current package name: com.example.firstapp
 - Current save location: /Users/jonathangallo/ANDROID_REPOS/firstapp
 - This is a Kotlin + Jetpack Compose Android app created in Android Studio.
-- The app is no longer the default starter template in practice; it now contains a working first-pass multi-timer UI.
-- The user is a beginner to Android development, so explanations and changes should remain clear, incremental, and beginner-friendly.
-- The user wants to learn the modern Android stack:
-  - Kotlin
-  - Jetpack Compose
+- The project started as the default Empty Activity template but is now a custom multi-timer app.
+- The app is intentionally being built in a beginner-friendly way:
+  - Kotlin only
+  - Jetpack Compose only
   - Material 3
   - Gradle Kotlin DSL
-- The user does NOT want legacy XML Views unless explicitly requested later.
+  - no legacy XML view UI
+- The user is learning Android development while building this app, so future work should stay explainable and incremental.
 
 PRIMARY GOAL
 - Build a normal Android app intended to be used ONLY on the bottom screen of the AYN Thor.
-- Treat the target device as a normal single-screen Android app with a compact, unusual screen shape.
-- Do NOT introduce dual-screen APIs, foldable APIs, spanning, or second-display logic.
-- Design around the bottom-screen dimensions and usability constraints, not around tall phone defaults.
+- Treat the target as a single compact Android screen, not as a dual-screen or foldable app.
+- Do NOT introduce:
+  - dual-screen APIs
+  - spanning
+  - foldable APIs
+  - second-display-specific architecture
+  - Bluetooth controller assumptions
+- Design the app around:
+  - fast interactions
+  - no scroll-heavy navigation
+  - touch-friendly controls
+  - controller / D-pad support for Thor hardware buttons
 
 CURRENT APP CONCEPT
-- The app concept is now defined at a basic level:
+- The app concept is now clearly defined:
   - It is a multi-timer app.
-  - The user should be able to create multiple timers quickly.
-  - The app is designed for fast touch interaction on a small screen.
-- The app currently supports:
-  - Quick preset timers
-  - Custom timer creation through a popup dialog
-  - Multiple timers displayed on the main screen in a grid
-  - Start / pause / reset / remove timer actions
-  - A placeholder blank settings popup
+  - The user can quickly create and manage multiple timers at once.
+  - The UI is optimized for a compact device screen and hardware button input.
+- The current app is not just a prototype shell anymore.
+- It contains a working dashboard, timer logic, settings, theme switching, accent switching, alert behavior, haptics, and hardware controller navigation.
 
 HARDWARE TARGET / SCREEN TARGET
-- Target usage: AYN Thor bottom screen only
-- No dual-screen behavior
-- No spanning across screens
-- No foldable APIs
-- No second-display APIs
-- No special multi-window logic unless explicitly requested later
-- Working bottom-screen emulation target for development:
-  - Screen size: 3.92 inches
+- Target device: AYN Thor bottom screen
+- Target usage: bottom screen only
+- Do not build for spanning across both displays
+- Do not build special multi-display app logic unless explicitly requested later
+- Correct bottom-screen resolution assumption:
   - Resolution: 1080 x 1240
-- Design assumption:
-  - This is a compact portrait-oriented screen that is still unusual compared to a normal phone
-  - UI should prioritize readability, touch targets, and low clutter
-  - Layouts should avoid assuming a large normal phone canvas
-  - Vertical space is limited enough that oversized headers and large stacked controls can easily break the layout
+  - Orientation assumption: portrait
+  - Screen size reference: about 3.92 inches
+- Practical layout assumption:
+  - This is a compact portrait display with less room than a normal phone
+  - Oversized headers and deep vertical stacks can easily break the layout
+  - Buttons need to stay large enough to tap reliably
+  - The dashboard should avoid hidden content and unnecessary text
 
 CURRENT DEVELOPMENT STACK
 - IDE: Android Studio
-- AI coding helper expected: ChatGPT Codex 5.3 / Codex-based workflow
 - Language: Kotlin
 - UI toolkit: Jetpack Compose
-- Build configuration language: Kotlin DSL
+- Design system base: Material 3
 - Build system: Gradle
-- App style: native Android app
-- Output target: APK / Android app package
+- Build script format: Kotlin DSL
+- App architecture level:
+  - single-activity
+  - Compose state in MainActivity.kt
+  - no ViewModel yet
+  - no persistence layer yet
+  - no backend
+  - no networking
+  - no database
 
 CURRENT ANDROID / BUILD CONTEXT
-- Minimum SDK: API 29 (Android 10)
+- Minimum SDK: API 29
 - Target SDK: 36
 - Compile SDK: 36.1
-- Build scripts use Kotlin DSL, not Groovy
-- The project builds successfully with:
+- Java compatibility: 11
+- Build features:
+  - Compose enabled
+- Current known successful build command:
   - ./gradlew :app:assembleDebug
 - Current debug APK output path:
   - app/build/outputs/apk/debug/app-debug.apk
 
-IMPORTANT SDK / VERSION CONTEXT
-- The app minSdk is API 29.
-- The app is intended to run on Android 10 and above.
-- Emulator Android version can be newer than minSdk.
-- For Thor-like testing, API 33 is still a reasonable target if available, but newer emulator images are acceptable.
-
-CURRENT TESTING / EMULATOR CONTEXT
-- The project has already built and run successfully in the emulator.
-- A custom AVD is intended to approximate the Thor bottom screen.
-- Custom emulator profile assumptions:
-  - Device name: AYN Thor Bottom Screen
-  - Device type: Phone/Tablet
-  - Screen size: 3.92
-  - Resolution: 1080 x 1240
-  - Round screen: off
-  - RAM: 2048 MB
-  - Hardware buttons: off
-  - Hardware keyboard: off
-  - Navigation style: None
-- The current UI work has been heavily shaped by screenshot-driven iteration against the compact screen shape.
-
-REAL DEVICE TESTING CONTEXT
-- The real device target is the AYN Thor.
-- Planned real-device workflow remains standard Android debugging:
-  - Enable Developer Options
-  - Enable USB debugging
-  - Connect the Thor by USB
-  - Select the Thor as the run target in Android Studio
-- Real-device validation is still important later because the UI is very size-sensitive.
+CURRENT TESTING CONTEXT
+- The app has been tested in:
+  - Android emulator
+  - real-device style screenshot iteration
+  - AYN Thor bottom-screen testing
+- A custom emulator profile is intended to approximate the Thor bottom screen:
+  - 1080 x 1240
+  - portrait
+  - no navigation buttons
+  - no hardware buttons
+- Real-device testing matters because this UI is very size-sensitive and controller-sensitive.
+- The Thor may expose the bottom display as an external display, so testing/deployment may require adb display targeting depending on device behavior.
 
 CURRENT APP STATUS
-- This is now a functional first-pass timer app, not a blank starter project.
-- The app is still single-activity and Compose-based.
-- There is no database yet.
-- There is no backend yet.
-- There is no networking yet.
-- There is no authentication yet.
-- There are no custom permissions yet.
-- There is no navigation library or multi-screen navigation stack yet.
-- There is no ViewModel yet.
-- There is no persistence layer yet.
-- There are no notifications yet.
-- There is no alarm manager / background service / foreground service yet.
-- There is no sound, vibration, or completion alert system yet.
-- Timers are currently in-memory only.
-- If the process is killed or the app is restarted, timers are lost.
+- This is a functional first usable version of the app.
+- It is no longer a starter template.
+- It includes:
+  - working timer creation
+  - working timer countdown logic
+  - multi-timer dashboard
+  - theme switching
+  - accent switching
+  - vibration feedback
+  - finish alert popup
+  - system alarm / notification sound fallback
+  - controller support using D-pad + face buttons
+- Still missing:
+  - persistence across app restarts
+  - notifications
+  - background timer scheduling
+  - alarm manager integration
+  - foreground service
+  - long-term architecture separation
+  - tests
 
-CURRENT APP STRUCTURE
+CURRENT PROJECT STRUCTURE
 Root project contains:
-- .gradle
-- .idea
-- app
-- gradle
+- PROJECT_CONTEXT.txt
 - build.gradle.kts
+- settings.gradle.kts
 - gradle.properties
 - gradlew
 - gradlew.bat
-- local.properties
-- settings.gradle.kts
-- PROJECT_CONTEXT.txt
+- app/
+- gradle/
 
-Inside app:
-- src
-- build.gradle.kts
-- proguard-rules.pro
+App module contains:
+- app/build.gradle.kts
+- app/proguard-rules.pro
+- app/src/main/
 
-Inside app/src/main:
-- java/com/example/firstapp/
-- res/
-- AndroidManifest.xml
-
-Kotlin source path:
+Important source files:
 - app/src/main/java/com/example/firstapp/MainActivity.kt
-
-Theme-related files:
 - app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
 - app/src/main/java/com/example/firstapp/ui/theme/Color.kt
 - app/src/main/java/com/example/firstapp/ui/theme/Type.kt
-
-Relevant drawable/resource files now include:
+- app/src/main/AndroidManifest.xml
 - app/src/main/res/drawable/settings.xml
-  - This is the settings gear vector drawable used by the settings button in the header.
 
 CURRENT MAINACTIVITY CONTEXT
-MainActivity.kt currently contains the full first-pass application UI and most of the app logic:
-- MainActivity extends ComponentActivity
-- onCreate calls enableEdgeToEdge()
-- onCreate calls setContent { FirstAppTheme { TimerApp() } }
-- TimerApp is the main top-level composable
-- Timer state is stored in a remembered mutableStateListOf<TimerItem>()
+- MainActivity.kt currently contains most of the application logic and UI.
+- MainActivity:
+  - extends ComponentActivity
+  - calls enableEdgeToEdge()
+  - calls setContent { TimerApp() }
+- TimerApp:
+  - owns main app state
+  - applies FirstAppTheme(themeMode, accentColor)
+  - manages timers
+  - manages dialog visibility
+  - manages theme selection
+  - manages accent selection
+  - manages active finish alerts
+
+CURRENT CORE DATA MODEL
 - TimerItem currently contains:
   - id
   - totalSeconds
   - remainingSeconds
   - isRunning
   - endTimeMillis
-- Timer countdown updates are driven by a LaunchedEffect loop
-- The loop recomputes remaining time for running timers based on System.currentTimeMillis()
-- Running timers stop automatically when remaining time reaches 0
+- Timer state is stored in:
+  - mutableStateListOf<TimerItem>()
+- Finished timer IDs are tracked separately so the finish alert popup can be shown and cleared safely.
 
-CURRENT FEATURE SET
-- Main dashboard screen
-- Top header with:
-  - "Multi Timer" title on the left
-  - settings icon button on the top right
-- Quick action row with:
-  - Custom button
-  - 5m preset
-  - 10m preset
-  - 15m preset
-- Preset timer behavior:
-  - Preset timers start immediately when tapped
-  - The user does NOT need to press Start after choosing a preset
-- Custom timer behavior:
-  - Custom button opens a popup dialog
-  - User sets minutes and seconds using +/- controls
-  - User presses Add Timer to create it
-  - Custom-created timers do NOT automatically start
-- Main timer display behavior:
-  - Timers are shown on the main screen in a grid
-  - The app does not rely on scrolling through a list of timers
-  - The grid is currently 2 columns by 2 rows
-  - Up to 4 timer slots are shown per page
-  - Empty slots display "Empty slot"
-- Page behavior:
-  - If more than 4 timers exist, page controls appear
-  - Previous / Next buttons switch between pages
-  - Page controls are hidden when only one page exists
-- Per-timer controls:
-  - Running timer:
-    - shows remaining time
-    - top-right remove X button
-    - Pause button
-    - Reset button next to Pause
-  - Not-running timer:
-    - shows remaining time
-    - top-right remove X button
-    - Start button or Restart button depending on state
-- Settings behavior:
-  - Header settings icon opens a popup dialog styled similarly to the custom timer dialog
-  - The settings popup is intentionally blank right now
-  - It currently only provides a Close button
-
-CURRENT UI STATE
-- The app no longer contains the default Greeting composable UI.
-- The main UI is custom-built for the compact target screen.
-- The layout has been iterated repeatedly to reduce cutoff and crowding issues.
-- Current major UI characteristics:
-  - dark theme
-  - red accent color
-  - compact header
-  - compact action row
-  - grid-based timer display
-  - dialog-based custom timer creation
-  - dialog-based placeholder settings screen
-- The header has been simplified to reclaim vertical space:
-  - settings icon is top-right
-  - timer count / running-count text has been removed from the main screen
-- Timer cards have been simplified:
-  - only the remaining time is shown as the main information
-  - timer names/labels are not shown in the visible card UI
-- The settings button currently uses the vector drawable resource at:
-  - app/src/main/res/drawable/settings.xml
-
-CURRENT THEME / VISUAL DESIGN
-- The app uses a fixed dark Material 3 color scheme.
-- Dynamic color is not used.
-- Theme file:
-  - app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
-- Color file:
-  - app/src/main/java/com/example/firstapp/ui/theme/Color.kt
-- Current palette direction:
-  - dark background
-  - dark surfaces
-  - red primary accent
-  - muted gray outlines
-  - light text on dark surfaces
-- Relevant custom colors include:
-  - RedAccent
-  - RedAccentDark
-  - RedHighlight
-  - AppBackground
-  - AppSurface
-  - AppSurfaceRaised
-  - AppOutline
-  - OnDark
-  - OnDarkMuted
-
-CURRENT LAYOUT / UX DECISIONS
-- The user explicitly does not want the app to depend on scrolling as the main interaction model.
-- The main screen uses a fixed dashboard layout rather than a scrollable list of timers.
-- Menus/dialogs are used where appropriate to avoid overloading the main screen.
-- The compact screen forces tradeoffs:
-  - headers must be small
-  - action rows must be dense
-  - timer cards cannot contain too much text
-  - buttons often need reduced padding to fit
-- The timer count / running-count label was removed because it consumed horizontal and vertical space without being essential.
-- The timer card layout has already needed multiple rounds of tightening for:
-  - countdown visibility
-  - action button clipping
-  - remove-button placement
-
-CURRENT TIMER LOGIC DETAILS
+CURRENT TIMER LOGIC
 - addTimer(totalSeconds, startImmediately = false):
-  - creates a timer
-  - inserts it at the front of the list
-  - resets currentPage to 0 so newly added timers are visible immediately
-- Quick preset buttons call addTimer(..., startImmediately = true)
-- Custom timer dialog calls addTimer(..., startImmediately = false)
-- Pause logic:
+  - validates totalSeconds > 0
+  - inserts the new timer at the front of the list
+  - resets currentPage to 0 so the new timer is visible immediately
+  - optionally starts immediately by setting endTimeMillis
+- updateTimer(timerId, transform):
+  - finds the timer by id
+  - replaces it with a transformed copy
+- Countdown behavior:
+  - driven by a LaunchedEffect loop
+  - uses System.currentTimeMillis()
+  - recomputes remaining seconds from endTimeMillis
+  - stops timers when remaining time reaches 0
+- Refresh cadence:
+  - faster when at least one timer is running
+  - slower when idle
+- Pause behavior:
   - computes remaining time from endTimeMillis
-  - stops the timer
-  - clears endTimeMillis
-- Start / Restart logic:
-  - restarts from totalSeconds if remainingSeconds == 0
-  - otherwise resumes from current remainingSeconds
-- Reset logic:
-  - returns timer to its original totalSeconds
   - clears running state
-- Remove logic:
-  - removes the timer from the mutable list
+  - clears endTimeMillis
+- Start behavior:
+  - resumes from remainingSeconds if timer is paused
+  - restarts from totalSeconds if remainingSeconds == 0
+- Reset behavior:
+  - restores remainingSeconds to totalSeconds
+  - clears running state
+  - clears endTimeMillis
+- Remove behavior:
+  - deletes the timer from the list
+
+CURRENT MAIN SCREEN / DASHBOARD
+- The main screen is a fixed dashboard layout.
+- It is intentionally not a scrollable timer list.
+- Main screen structure:
+  - header row
+  - quick action row
+  - 2x2 timer grid
+  - page controls only when needed
+- Header:
+  - title: Multi Timer
+  - settings gear icon on the top right
+  - no timer count / running count text
+- Quick action row:
+  - Custom
+  - 5m
+  - 10m
+  - 15m
+- Quick preset behavior:
+  - creates timer
+  - starts timer immediately
+- Custom behavior:
+  - opens custom timer dialog
+  - created timers do not auto-start
+- Page behavior:
+  - 4 timers max visible per page
+  - page controls appear only if timers exceed 4
+  - Previous / Next switch pages
+
+CURRENT TIMER CARD DESIGN
+- Timer cards are shown in a 2x2 grid.
+- Empty slots remain visible so the grid structure stays stable.
+- Active / existing timer cards show:
+  - large countdown
+  - remove button in the top-right
+  - Pause + Reset while running
+  - Start or Restart while not running
+- Empty slots show:
+  - Empty slot
+  - Ready for timer
+- Controller focus state is visually reflected on timer cards.
+- Empty cards are intentionally styled to remain visible even in OLED mode.
 
 CURRENT DIALOGS
 Custom timer dialog:
-- Uses the shared AppDialog + DialogCard structure
-- Compact stepper rows for minutes and seconds
-- Cancel button
-- Add Timer button
-- Designed specifically to avoid being cut off on the small screen
+- Opens from Custom button
+- Uses compact stepper controls
+- Minute controls:
+  - decrement by 1
+  - increment by 1
+- Second controls:
+  - decrement by 15
+  - increment by 15
+  - effectively cycles in usable 15-second increments within the allowed range
+- Actions:
+  - Cancel
+  - Add Timer
+- Designed to fit on the compact target screen without cutoff
 
 Settings dialog:
-- Uses the same shared AppDialog + DialogCard structure
-- Has no actual settings controls yet
-- Exists as a placeholder shell for future settings
-- Currently contains blank space plus a Close button
+- Opens from top-right gear icon
+- Includes real settings now, not a placeholder
+- Sections:
+  - Theme
+  - Accent
+  - Close button
+
+Finished timer dialog:
+- Appears when a timer reaches zero
+- Uses a large custom panel instead of the smaller generic dialog layout
+- Takes up a large portion of the screen
+- Shows:
+  - Timer Finished title
+  - oversized Stop Alert button
+- Description text was intentionally removed to reduce clutter
+- Designed to be controller-friendly and touch-friendly
+
+CURRENT THEME SYSTEM
+- The app supports three theme modes:
+  - Dark
+  - Light
+  - OLED
+- Dark mode:
+  - current standard dark palette
+  - dark surfaces and dark background
+- Light mode:
+  - white / light background
+  - same accent-driven style
+- OLED mode:
+  - pure black background emphasis
+  - red/blue/green/purple accent still visible
+- Theme changes are applied live in-app.
+- Theme choice is currently in-memory / saveable state only.
+- Theme choice is not yet persisted across full process death / reinstall.
+
+CURRENT ACCENT COLOR SYSTEM
+- The app supports four accent colors:
+  - Red
+  - Blue
+  - Green
+  - Purple
+- Default accent:
+  - Red
+- Accent choices are available in the settings dialog.
+- Accent selector uses color swatch buttons instead of text labels.
+- Selected accent is visually highlighted.
+- Accent changes apply live throughout the app.
+- Accent choice is not yet persisted beyond current saved UI state scope.
+
+CURRENT VISUAL / UX STYLE
+- The app has been repeatedly tuned for the compact Thor bottom screen.
+- Current design priorities:
+  - no long scrolling experience
+  - large tap targets
+  - minimal nonessential text
+  - strong visual emphasis on active timers
+  - quick access to the most common timer actions
+- The design has intentionally removed or avoided:
+  - timer names on cards
+  - header status clutter
+  - explanatory copy where it wastes space
+  - menus that hide timers unnecessarily
+
+CURRENT AUDIO / ALERT BEHAVIOR
+- When a timer finishes:
+  - the app attempts to play the device system alarm sound
+  - if no default alarm sound exists, it falls back to the system notification sound
+- This uses RingtoneManager rather than a bundled sound file.
+- Emulator audio may be silent depending on emulator sound configuration.
+- Real devices are more reliable for verifying audio behavior.
+
+CURRENT HAPTIC / FEEDBACK BEHAVIOR
+- Touch haptics:
+  - main shared app buttons vibrate on tap
+  - accent swatch buttons vibrate on tap
+- Controller haptics:
+  - controller A-button confirmation now triggers haptic feedback too
+- Button visuals:
+  - buttons use a press-scale animation for tap feedback
+
+CURRENT CONTROLLER SUPPORT
+- The app now supports hardware D-pad and face-button input for the Thor.
+- This is not based on Bluetooth controller support.
+- Controller support is handled explicitly in Compose key event processing.
+- Supported conceptual inputs:
+  - D-pad left
+  - D-pad right
+  - D-pad up
+  - D-pad down
+  - primary action (A / center / enter)
+  - back action (B)
+  - secondary action (X)
+  - tertiary action (Y)
+- Dashboard controller behavior:
+  - D-pad moves focus logically across:
+    - settings
+    - custom
+    - presets
+    - timer cards
+    - page controls
+  - A / primary:
+    - activates the focused item
+    - starts/pauses timer cards
+    - opens empty slot into timer creation flow
+  - X / secondary on focused timer card:
+    - reset timer
+  - Y / tertiary on focused timer card:
+    - remove timer
+- Dialog controller behavior:
+  - D-pad moves between logical controls
+  - A confirms the focused control
+  - B dismisses the dialog
+- Finish alert controller behavior:
+  - A stops alert
+  - B also stops alert
+- Controller focus state is visually highlighted so the user can see what is selected.
+
+IMPORTANT INTERACTION CONSTRAINTS
+- The user explicitly does not want behavior tied to Android hardware back/home navigation as the app’s normal flow.
+- The app currently does not rely on hardware back/home behavior for user-visible core actions.
+- Home cannot be overridden in a normal Android app anyway.
+- Dialog dismissal and controller cancellation use explicit app logic.
+- The main app should remain operable through on-screen controls and controller input without needing Android navigation buttons.
 
 CURRENT RESOURCE / ICON CONTEXT
-- settings.xml in drawable is now a standard vector drawable, not an adaptive launcher icon wrapper
-- It is referenced directly from Compose using painterResource(R.drawable.settings)
-- This icon is used only for the header settings button at the moment
+- settings.xml in drawable:
+  - custom vector drawable used for the settings gear button
+  - referenced directly from Compose with painterResource(R.drawable.settings)
+- Launcher icon:
+  - the manifest currently still points to:
+    - @mipmap/ic_launcher
+    - @mipmap/ic_launcher_round
+  - replacing the app icon is expected to happen through Android Studio Image Asset tooling using a PNG source
 
-BUILD / GRADLE CONTEXT
-- Gradle is the Android build system for this project.
-- Build scripts use Kotlin DSL, not Groovy.
-- Relevant build files:
-  - Root build file: build.gradle.kts
-  - App module build file: app/build.gradle.kts
-  - settings.gradle.kts defines project/module structure
-  - gradle.properties contains build-wide settings
-  - local.properties contains machine-local SDK path
-  - gradle/libs.versions.toml defines versions and library aliases
-- Dependency approach remains intentionally minimal.
-- No major new libraries were added for this timer UI.
-- The settings icon implementation was done with local drawable resources rather than adding extra icon-pack dependencies.
+CURRENT FILE RESPONSIBILITIES
+- MainActivity.kt:
+  - app state
+  - timer logic
+  - dashboard
+  - timer cards
+  - dialogs
+  - controller input handling
+  - haptic handling for shared buttons
+- Theme.kt:
+  - app theme composition
+  - theme-mode selection handling at the theme layer
+- Color.kt:
+  - custom color definitions
+  - theme palettes
+  - accent color values
+- settings.xml:
+  - header settings icon drawable
 
-BEGINNER SUPPORT CONTEXT
-- The user is new to Android development.
-- The user benefits from:
-  - line-by-line explanations
-  - file-by-file explanations
-  - plain-English rationale
-  - small changes first
-  - exact file locations
-  - minimal unexplained Android jargon
-- When suggesting changes, continue to explain:
-  - what file to open
-  - what changed
-  - why it matters
-  - what the user should expect visually or behaviorally
+CURRENT LIMITATIONS / KNOWN GAPS
+- Timers are still in-memory only.
+- If the app process dies, timers are lost.
+- Theme and accent choices are not yet persisted into a durable settings store.
+- There is no DataStore or SharedPreferences integration yet.
+- Timers do not survive reboot or background process loss.
+- There is no foreground service or background alarm scheduling.
+- There are no Android notifications for finished timers.
+- There is no vibration pattern customization yet.
+- Controller mapping assumes standard Android key codes; Thor-specific remapping may be needed if the hardware reports unusual codes.
+- There is no automated test coverage yet.
 
-IMPORTANT PROJECT CONSTRAINTS
-- Stay on Kotlin.
-- Stay on Jetpack Compose.
-- Stay on Material 3 / modern Compose patterns unless there is a strong reason not to.
-- Do not convert this project to XML Views unless explicitly asked.
-- Do not introduce dual-screen APIs.
-- Do not assume the app needs multi-display logic.
-- Do not over-engineer early.
-- Keep the app simple and explainable.
-- Preserve the current project setup unless there is a clear reason to change it.
-- Continue optimizing for the compact Thor-like screen instead of phone-default layouts.
+SAFE ASSUMPTIONS FOR FUTURE WORK
+- Keep using Compose.
+- Keep using a single-screen dashboard-first design.
+- Avoid introducing scrolling as the main way to manage timers unless the user explicitly changes direction.
+- Keep controls large and compact-screen friendly.
+- Preserve controller support whenever new features are added.
+- Any new dialog or settings UI should be tested for:
+  - touch target size
+  - controller focus behavior
+  - no cutoff on 1080 x 1240 Thor bottom-screen layout
 
-DESIGN / UX GUIDELINES FOR THIS APP
-- Optimize for a compact screen.
-- Keep touch targets reasonably large, but accept that some controls may need tighter padding than normal phone UI.
-- Avoid dense decorative UI that does not earn its space.
-- Avoid oversized headers and stacked chrome.
-- Prefer simple Compose layouts:
-  - Column
-  - Row
-  - Box
-- Favor visible primary actions on the main screen.
-- Do not hide essential timer actions behind scrolling.
-- Test visually against the custom 1080 x 1240, 3.92-inch emulator profile whenever possible.
+HIGH-VALUE NEXT STEPS IF EXPANDED LATER
+- Persist timers and app settings using DataStore
+- Add proper app icon assets
+- Add notification support for completed timers
+- Add optional custom sound asset support
+- Add vibration pattern options
+- Add user-configurable preset times
+- Add labels only if they can be done without harming the compact layout
+- Refactor app state out of MainActivity.kt if the code grows much more
 
-CODING PREFERENCES FOR FUTURE WORK
-- Use idiomatic Kotlin.
-- Use Compose for UI.
-- Keep logic simple and readable.
-- Prefer a single-activity Compose app unless requirements change.
-- Add features incrementally.
-- Avoid unnecessary libraries.
-- Avoid architectural complexity too early.
-- If state becomes more complex later, ViewModel can be introduced, but it is not currently required.
-- If persistence is added later, choose a simple modern Android-friendly approach.
-- Keep names clean and beginner-readable.
+BUILD / RUN NOTES
+- Standard debug build:
+  - ./gradlew :app:assembleDebug
+- Android Studio can build an APK from:
+  - Build -> Build Bundle(s) / APK(s) -> Build APK(s)
+- Debug APK path:
+  - app/build/outputs/apk/debug/app-debug.apk
 
-FILES MOST LIKELY TO MATTER NOW
-- app/src/main/java/com/example/firstapp/MainActivity.kt
-- app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
-- app/src/main/java/com/example/firstapp/ui/theme/Color.kt
-- app/src/main/res/drawable/settings.xml
-- app/src/main/AndroidManifest.xml
-- app/build.gradle.kts
-- gradle/libs.versions.toml
-
-SAFE DEFAULT ASSUMPTIONS FOR CODEX
-- The user wants a modern native Android app, not a cross-platform framework.
-- The user wants Kotlin + Jetpack Compose only.
-- The user wants the app to remain beginner-readable.
-- The app should work as a normal single-screen Android app.
-- The target layout should fit the Thor bottom-screen emulator profile.
-- The app should remain compatible with the current project setup unless explicitly changed.
-- Prefer API-safe code compatible with minSdk 29.
-- Do not assume the app should be Thor-exclusive at the code level unless requested.
-- Do not assume background timer reliability, notifications, or persistence exist yet.
-- If screenshots disagree with older written notes, treat the current local source code as the source of truth.
-
-CURRENT KNOWN OPEN QUESTIONS
-- Should timers persist across app restarts?
-- Should finished timers trigger sound, vibration, or notifications?
-- Should the settings popup eventually control theme, sound, or timer defaults?
-- Should there be a maximum number of simultaneous timers?
-- Should page controls remain the long-term approach, or should the grid/dashboard design change again?
-- Final orientation behavior is still not explicitly locked down.
-- Real-device testing on the actual Thor remains important for final layout validation.
-
-WHAT CODEX SHOULD AVOID
-- Do not introduce XML layout screens.
-- Do not replace Compose with Views.
-- Do not create dual-screen features.
-- Do not assume a normal tall-phone layout is acceptable without compact-screen verification.
-- Do not make major Gradle or dependency changes without explaining them.
-- Do not rename package/project/files unless asked.
-- Do not add persistence, alarms, services, or notifications silently without discussing the tradeoff.
-- Do not jump straight into advanced architecture unless the project grows enough to justify it.
-
-SHORT SUMMARY
-This project is now a working first-pass Kotlin + Jetpack Compose multi-timer app designed for the compact bottom screen of the AYN Thor. It uses a dark theme with red accents, a fixed no-scroll dashboard, quick preset timers that auto-start, a custom timer popup, and a placeholder settings popup opened from a top-right gear icon. Timers are shown in a paged 2x2 grid on the main screen, with direct start/pause/reset/remove controls. The app is still intentionally simple and beginner-friendly: no persistence, no notifications, no backend, and no advanced architecture yet. Development should continue to prioritize compact-screen usability and small, explainable changes.
+SUMMARY OF CURRENT APP IDENTITY
+- This app is now a compact, dark-styled, controller-aware multi-timer dashboard for the AYN Thor bottom screen.
+- It prioritizes:
+  - speed
+  - visibility
+  - large touch targets
+  - simple timer management
+  - low clutter
+  - live theme/accent customization
+  - explicit interaction through touch and hardware buttons
