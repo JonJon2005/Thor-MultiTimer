@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.firstapp"
+    namespace = "com.example.thormultitimer"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.firstapp"
+        applicationId = "com.example.thormultitimer"
         minSdk = 29
         targetSdk = 36
         versionCode = 1

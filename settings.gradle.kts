@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FirstApp"
+rootProject.name = "Thor MultiTimer"
 include(":app")

@@ -1,6 +1,6 @@
-# FirstApp
+# Thor MultiTimer
 
-`FirstApp` is a compact multi-timer Android app built for the AYN Thor bottom screen. It is written in Kotlin with Jetpack Compose and Material 3, and is intentionally designed around a small `1080 x 1240` portrait display with large controls, low clutter, and no scroll-dependent main workflow.
+`Thor MultiTimer` is a compact Android multi-timer built for the AYN Thor bottom screen. It is written in Kotlin with Jetpack Compose and Material 3, and is intentionally designed around a small `1080 x 1240` portrait display with large controls, low clutter, and no scroll-dependent main workflow.
 
 ## What It Does
 
@@ -30,7 +30,7 @@ Design assumptions:
 
 ### Dashboard
 
-- Header with `Multi Timer` title and settings gear
+- Header with `Thor MultiTimer` title and settings gear
 - Quick actions row:
   - `Custom`
   - `5m`
@@ -89,11 +89,10 @@ The app supports Thor hardware buttons through explicit key handling.
 
 ## Project Structure
 
-- [`MainActivity.kt`](/Users/jonathangallo/ANDROID_REPOS/firstapp/app/src/main/java/com/example/firstapp/MainActivity.kt): main UI, state, timer logic, dialogs, controller handling
-- [`Theme.kt`](/Users/jonathangallo/ANDROID_REPOS/firstapp/app/src/main/java/com/example/firstapp/ui/theme/Theme.kt): theme composition and theme modes
-- [`Color.kt`](/Users/jonathangallo/ANDROID_REPOS/firstapp/app/src/main/java/com/example/firstapp/ui/theme/Color.kt): palette and accent definitions
-- [`settings.xml`](/Users/jonathangallo/ANDROID_REPOS/firstapp/app/src/main/res/drawable/settings.xml): settings gear drawable
-- [`PROJECT_CONTEXT.txt`](/Users/jonathangallo/ANDROID_REPOS/firstapp/PROJECT_CONTEXT.txt): detailed internal project report
+- [`MainActivity.kt`](app/src/main/java/com/example/thormultitimer/MainActivity.kt): main UI, state, timer logic, dialogs, controller handling
+- [`Theme.kt`](app/src/main/java/com/example/thormultitimer/ui/theme/Theme.kt): theme composition and theme modes
+- [`Color.kt`](app/src/main/java/com/example/thormultitimer/ui/theme/Color.kt): palette and accent definitions
+- [`settings.xml`](app/src/main/res/drawable/settings.xml): settings gear drawable
 
 ## Build
 
@@ -103,9 +102,7 @@ Build a debug APK with:
 ./gradlew :app:assembleDebug
 ```
 
-Output:
-
-- [`app-debug.apk`](/Users/jonathangallo/ANDROID_REPOS/firstapp/app/build/outputs/apk/debug/app-debug.apk)
+Output: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Current Limitations
 
@@ -114,7 +111,7 @@ Output:
 - Theme and accent settings are not yet persisted to durable storage
 - No notifications yet
 - No background alarm scheduling yet
-- No automated tests yet
+- No meaningful automated tests yet
 
 ## Likely Next Steps
 

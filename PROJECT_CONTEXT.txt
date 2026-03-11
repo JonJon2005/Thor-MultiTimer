@@ -1,9 +1,9 @@
 ANDROID APP PROJECT CONTEXT REPORT
 
 PROJECT OVERVIEW
-- Project name: FirstApp
-- Current package name: com.example.firstapp
-- Current save location: /Users/jonathangallo/ANDROID_REPOS/firstapp
+- Project name: Thor MultiTimer
+- Current package name: com.example.thormultitimer
+- Current save location: /path/to/thor-multitimer
 - This is a Kotlin + Jetpack Compose Android app created in Android Studio.
 - The project started as the default Empty Activity template but is now a custom multi-timer app.
 - The app is intentionally being built in a beginner-friendly way:
@@ -135,11 +135,11 @@ App module contains:
 - app/src/main/
 
 Important source files:
-- app/src/main/java/com/example/firstapp/MainActivity.kt
-- app/src/main/java/com/example/firstapp/AppSettingsStore.kt
-- app/src/main/java/com/example/firstapp/ui/theme/Theme.kt
-- app/src/main/java/com/example/firstapp/ui/theme/Color.kt
-- app/src/main/java/com/example/firstapp/ui/theme/Type.kt
+- app/src/main/java/com/example/thormultitimer/MainActivity.kt
+- app/src/main/java/com/example/thormultitimer/AppSettingsStore.kt
+- app/src/main/java/com/example/thormultitimer/ui/theme/Theme.kt
+- app/src/main/java/com/example/thormultitimer/ui/theme/Color.kt
+- app/src/main/java/com/example/thormultitimer/ui/theme/Type.kt
 - app/src/main/AndroidManifest.xml
 - app/src/main/res/drawable/settings.xml
 
@@ -151,7 +151,7 @@ CURRENT MAINACTIVITY CONTEXT
   - calls setContent { TimerApp() }
 - TimerApp:
   - owns main app state
-  - applies FirstAppTheme(themeMode, accentColor)
+  - applies ThorMultiTimerTheme(themeMode, accentColor)
   - manages timers
   - manages dialog visibility
   - manages theme selection
@@ -210,7 +210,7 @@ CURRENT MAIN SCREEN / DASHBOARD
   - 2x2 timer grid
   - page controls only when needed
 - Header:
-  - title: Multi Timer
+  - title: Thor MultiTimer
   - settings gear icon on the top right
   - no timer count / running count text
 - Quick action row:
