@@ -1,4 +1,4 @@
-# Thor MultiTimer
+<img width="619" height="517" alt="image" src="https://github.com/user-attachments/assets/6c91112e-1af9-4b4f-b994-03df01918a25" /># Thor MultiTimer
 
 `Thor MultiTimer` is a compact Android multi-timer built for the AYN Thor bottom screen. It is written in Kotlin with Jetpack Compose and Material 3, and is intentionally designed around a small `1080 x 1240` portrait display with large controls, low clutter, and no scroll-dependent main workflow.
 
@@ -13,6 +13,11 @@
 - Shows a large finish-alert panel with a big `Stop Alert` button
 - Supports touch haptics and controller-confirm haptics
 - Supports Thor hardware D-pad and face-button navigation
+
+
+## Image Preview
+
+<img width="619" height="517" alt="image" src="https://github.com/user-attachments/assets/8b1629f7-a011-4d69-80bc-838c2c98c9f4" />
 
 ## Target Device
 
