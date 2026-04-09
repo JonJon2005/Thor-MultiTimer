@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.jks
+*.keystore
+keystore.properties
+*.pem
+*.key
+*.p12
+*.apk
+*.aab
+.env
+google-services.json

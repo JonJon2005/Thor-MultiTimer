@@ -106,19 +106,32 @@ import com.example.thormultitimer.ui.theme.ThorMultiTimerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
+import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+
 private const val TimersPerPage = 4
 private val SettingsColorButtonMinHeight = 38.dp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
         setContent {
             TimerApp()
         }
     }
 }
-
 private data class TimerItem(
     val id: Int,
     val totalSeconds: Int,
@@ -394,6 +407,11 @@ private fun AppThemeMode.toSettingsFocusTarget(): SettingsDialogFocusTarget = wh
     AppThemeMode.DARK -> SettingsDialogFocusTarget.THEME_DARK
     AppThemeMode.LIGHT -> SettingsDialogFocusTarget.THEME_LIGHT
     AppThemeMode.OLED -> SettingsDialogFocusTarget.THEME_OLED
+}
+
+private inline fun <reified T : Enum<T>> enumValueOfOrDefault(name: String, defaultValue: T): T {
+    return runCatching { enumValueOf<T>(name) }
+        .getOrDefault(defaultValue)
 }
 
 private fun String.toTimerInputSeconds(): Int {
@@ -715,7 +733,7 @@ private fun DashboardScreen(
     var isControllerMode by rememberSaveable { mutableStateOf(false) }
     var lastControllerInputNonce by rememberSaveable { mutableIntStateOf(0) }
     val view = LocalView.current
-    val focusedTarget = DashboardFocusTarget.valueOf(focusedTargetName)
+    val focusedTarget = enumValueOfOrDefault(focusedTargetName, DashboardFocusTarget.CUSTOM)
     val activeFocusedTarget = if (isControllerMode) focusedTarget else null
     val controllerHints = dashboardControllerHints(
         focusedTarget = focusedTarget,
@@ -1293,7 +1311,7 @@ private fun TimerBuilderDialog(
     var timerInput by rememberSaveable { mutableStateOf("") }
     var focusedTargetName by rememberSaveable { mutableStateOf(BuilderDialogFocusTarget.DIGIT_1.name) }
     val view = LocalView.current
-    val focusedTarget = BuilderDialogFocusTarget.valueOf(focusedTargetName)
+    val focusedTarget = enumValueOfOrDefault(focusedTargetName, BuilderDialogFocusTarget.DIGIT_1)
     val totalSeconds = timerInput.toTimerInputSeconds()
     val canAddTimer = totalSeconds > 0
 
@@ -1457,7 +1475,10 @@ private fun SettingsDialog(
 ) {
     var focusedTargetName by rememberSaveable { mutableStateOf(selectedThemeMode.toSettingsFocusTarget().name) }
     val view = LocalView.current
-    val focusedTarget = SettingsDialogFocusTarget.valueOf(focusedTargetName)
+    val focusedTarget = enumValueOfOrDefault(
+        focusedTargetName,
+        selectedThemeMode.toSettingsFocusTarget()
+    )
 
     AppDialog(
         onDismiss = onDismiss,
