@@ -23,3 +23,6 @@ keystore.properties
 *.aab
 .env
 google-services.json
+SecurityReport.txt
+.idea/deploymentTargetSelector.xml
+.idea/misc.xml
